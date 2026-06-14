@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -58,11 +59,12 @@ export default function ROIConsultant() {
     currentMonthlySpend: 250
   });
 
-  const handleSimulate = async () => {
+  const handleSimulate = async (dataOverride?: CalculateRoiInput) => {
+    const inputData = dataOverride || formData;
     setIsSimulating(true);
     setIsQuotaError(false);
     try {
-      const output = await calculateRoi(formData);
+      const output = await calculateRoi(inputData);
       setResult(output);
       setDialogOpen(false);
       toast({
@@ -81,8 +83,8 @@ export default function ROIConsultant() {
         setIsQuotaError(true);
         // Provide fallback estimate for common scenarios
         const fallbackResult: CalculateRoiOutput = {
-          estimatedUpfrontCost: formData.projectType === 'solar' ? 15000 : 8000,
-          annualSavings: formData.currentMonthlySpend * 6,
+          estimatedUpfrontCost: inputData.projectType === 'solar' ? 15000 : 8000,
+          annualSavings: inputData.currentMonthlySpend * 6,
           paybackPeriodYears: 7,
           carbonOffsetTonsPerYear: 5.2,
           availableIncentives: ["Federal Tax Credit (30%)", "Local Utility Rebate"],
@@ -188,7 +190,7 @@ export default function ROIConsultant() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleSimulate} disabled={isSimulating} className="w-full">
+              <Button onClick={() => handleSimulate()} disabled={isSimulating} className="w-full">
                 {isSimulating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
                 Run AI Simulation
               </Button>
@@ -231,8 +233,9 @@ export default function ROIConsultant() {
                 variant="ghost" 
                 className="w-full justify-between text-xs font-medium hover:bg-primary/10 group"
                 onClick={() => {
-                  setFormData(prev => ({ ...prev, projectType: 'solar' }));
-                  handleSimulate();
+                  const data: CalculateRoiInput = { ...formData, projectType: 'solar' };
+                  setFormData(data);
+                  handleSimulate(data);
                 }}
               >
                 Solar Payback (Typical) <ChevronRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
@@ -241,8 +244,9 @@ export default function ROIConsultant() {
                 variant="ghost" 
                 className="w-full justify-between text-xs font-medium hover:bg-primary/10 group"
                 onClick={() => {
-                  setFormData(prev => ({ ...prev, projectType: 'heat_pump' }));
-                  handleSimulate();
+                  const data: CalculateRoiInput = { ...formData, projectType: 'heat_pump' };
+                  setFormData(data);
+                  handleSimulate(data);
                 }}
               >
                 Heat Pump ROI <ChevronRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
@@ -372,7 +376,7 @@ export default function ROIConsultant() {
               </div>
               <div className="text-muted-foreground font-headline font-bold text-lg">Awaiting custom parameters...</div>
               <p className="text-muted-foreground text-sm mt-2 max-w-[320px] leading-relaxed">
-                Click "New Custom Audit" or select a quick estimate to see your projected ROI and carbon offset.
+                Click \"New Custom Audit\" or select a quick estimate to see your projected ROI and carbon offset.
               </p>
             </div>
           )}
