@@ -1,13 +1,16 @@
+
 "use client";
 
-import { Bell, Search, User, Zap, TrendingDown, Target, Sparkles } from "lucide-react";
+import { useMemo } from "react";
+import { Bell, Search, Zap, TrendingDown, Target, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, useDoc } from "@/firebase";
+import { doc } from "firebase/firestore";
 
 const notifications = [
   {
@@ -38,7 +41,15 @@ const notifications = [
 
 export function TopBar() {
   const { user } = useUser();
+  const db = useFirestore();
   const userAvatarPlaceholder = PlaceHolderImages.find(img => img.id === 'avatar-user')?.imageUrl;
+
+  const profileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  const { data: profile } = useDoc(profileRef);
+
+  const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || "Alex Rivers";
+  const photoURL = profile?.photoURL || user?.photoURL || userAvatarPlaceholder;
+  const isPro = profile?.isProMember !== false; // Default to true for existing visual consistency
 
   return (
     <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30 px-6 flex items-center justify-between">
@@ -100,12 +111,14 @@ export function TopBar() {
         <div className="h-8 w-px bg-border"></div>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <div className="text-sm font-medium">{user?.displayName || user?.email?.split('@')[0] || "Alex Rivers"}</div>
-            <div className="text-[10px] text-primary uppercase font-bold tracking-tighter">Pro Member</div>
+            <div className="text-sm font-bold">{displayName}</div>
+            {isPro && (
+              <div className="text-[10px] text-primary uppercase font-bold tracking-tighter">Pro Member</div>
+            )}
           </div>
           <Avatar className="h-9 w-9 border border-border">
-            <AvatarImage src={user?.photoURL || userAvatarPlaceholder} alt={user?.displayName || "User"} />
-            <AvatarFallback>{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
+            <AvatarImage src={photoURL} alt={displayName} />
+            <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
           </Avatar>
         </div>
       </div>

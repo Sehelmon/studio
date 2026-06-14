@@ -9,11 +9,10 @@ import {
   ShieldCheck, 
   Save, 
   Loader2, 
-  Mail, 
   Globe,
-  Bell,
   Lock,
-  UserCheck
+  UserCheck,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +21,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -39,6 +39,7 @@ export default function SettingsPage() {
     location: "",
     sustainabilityGoals: "",
     userHabits: "",
+    isProMember: true,
   });
 
   const profileRef = user ? doc(db, "users", user.uid) : null;
@@ -51,6 +52,7 @@ export default function SettingsPage() {
         location: profile.location || "San Francisco, CA",
         sustainabilityGoals: profile.sustainabilityGoals || "Reduce household energy consumption by 20%.",
         userHabits: profile.userHabits || "Drives to work daily, leaves lights on frequently.",
+        isProMember: profile.isProMember !== false,
       });
     }
   }, [profile]);
@@ -69,10 +71,10 @@ export default function SettingsPage() {
       .then(() => {
         toast({
           title: "Profile Updated",
-          description: "Your sustainability preferences have been saved and synced with Gemini.",
+          description: "Your sustainability preferences have been saved and synced across the platform.",
         });
       })
-      .catch(async (error) => {
+      .catch(async () => {
         const permissionError = new FirestorePermissionError({
           path: profileRef.path,
           operation: 'update',
@@ -168,11 +170,27 @@ export default function SettingsPage() {
                     />
                   </div>
                 </div>
+
+                <Separator className="my-6" />
+
+                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
+                  <div className="space-y-1">
+                    <div className="text-sm font-bold flex items-center gap-2">
+                      Pro Membership Status
+                      <Badge variant="default" className="text-[10px] h-5 bg-primary text-primary-foreground">PRO</Badge>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground uppercase">Enable exclusive AI auditing features</div>
+                  </div>
+                  <Switch 
+                    checked={formData.isProMember} 
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isProMember: checked }))} 
+                  />
+                </div>
               </CardContent>
               <CardFooter className="border-t border-border/50 pt-6">
                 <Button disabled={isSaving} className="w-full sm:w-auto">
                   {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                  Save Grounding Data
+                  Save Profile & Grounding Data
                 </Button>
               </CardFooter>
             </Card>
@@ -209,14 +227,26 @@ export default function SettingsPage() {
 
         <div className="lg:col-span-4 space-y-6">
           <Card className="glass-card overflow-hidden">
-            <div className="h-24 bg-primary/10 flex items-center justify-center">
+            <div className="h-24 bg-primary/10 flex items-center justify-center relative">
+              <div className="absolute top-4 right-4">
+                {formData.isProMember && (
+                   <div className="p-1 bg-primary rounded-full"><Check className="w-3 h-3 text-primary-foreground" /></div>
+                )}
+              </div>
               <div className="w-20 h-20 rounded-full border-4 border-background bg-secondary flex items-center justify-center overflow-hidden">
-                <User className="w-10 h-10 text-muted-foreground" />
+                <img 
+                  src={profile?.photoURL || "https://picsum.photos/seed/user-1/200/200"} 
+                  alt={formData.displayName} 
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
             <CardContent className="p-6 text-center pt-10">
               <h3 className="text-lg font-bold">{formData.displayName || "Alex Rivers"}</h3>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
+              <p className="text-xs text-muted-foreground mb-2">{user?.email}</p>
+              {formData.isProMember && (
+                <div className="text-[10px] font-bold text-primary uppercase tracking-tighter mb-4">Pro Member</div>
+              )}
               <Separator className="my-4" />
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground font-bold uppercase tracking-tighter">Eco Score</span>

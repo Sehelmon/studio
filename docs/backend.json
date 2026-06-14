@@ -13,7 +13,8 @@
         "joinedAt": { "type": "string", "format": "date-time" },
         "location": { "type": "string", "description": "The user's primary geographical location." },
         "sustainabilityGoals": { "type": "string", "description": "User's stated environmental objectives." },
-        "userHabits": { "type": "string", "description": "Known consumption patterns and habits." }
+        "userHabits": { "type": "string", "description": "Known consumption patterns and habits." },
+        "isProMember": { "type": "boolean", "description": "Whether the user has a pro membership." }
       }
     },
     "ImpactLog": {
