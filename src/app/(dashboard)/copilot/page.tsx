@@ -1,12 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { Send, Sparkles, MessageSquare, PlusCircle, History, Zap, TrendingDown, TrendingUp, Info, ShieldCheck, Globe } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { 
+  Send, 
+  Sparkles, 
+  History, 
+  PlusCircle, 
+  Zap, 
+  TrendingDown, 
+  TrendingUp, 
+  ShieldCheck, 
+  Globe, 
+  Loader2, 
+  CheckCircle2, 
+  AlertCircle 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { getPersonalizedCarbonCoaching } from "@/ai/flows/personalized-carbon-coaching";
+import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { collection, query, orderBy, limit, doc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 const suggestions = [
   "Why did my carbon score decrease?",
@@ -15,32 +33,94 @@ const suggestions = [
   "Compare me with average households",
 ];
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  reasoning?: string;
+  recommendations?: string[];
+  trends?: string[];
+}
+
 export default function CarbonCopilot() {
-  const [messages, setMessages] = useState([
+  const { user } = useUser();
+  const db = useFirestore();
+  const { toast } = useToast();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([
     { 
       role: 'assistant', 
-      content: "Hello Alex. I've analyzed your consumption audit from this morning. Your electricity usage spiked at 7 PM. Would you like to know why or how to offset this?",
-      reasoning: "Generated based on recent electricity bill audit showing 420kWh usage."
+      content: "Hello! I'm your Gemini Carbon Copilot. I've analyzed your sustainability profile. Ask me anything about your footprint or how to improve your Eco Score.",
+      reasoning: "Initialization complete based on user profile context."
     }
   ]);
   const [input, setInput] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+
+  // Fetch real user context
+  const profileRef = useMemo(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
+  const { data: profile } = useDoc(profileRef);
+
+  const logsQuery = useMemo(() => 
+    user ? query(collection(db, 'users', user.uid, 'impact_logs'), orderBy('timestamp', 'desc'), limit(5)) : null, 
+  [db, user]);
+  const { data: recentLogs } = useCollection(logsQuery);
+
   const userAvatar = PlaceHolderImages.find(img => img.id === 'avatar-user')?.imageUrl;
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isThinking]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isThinking) return;
     
-    const newMessages = [...messages, { role: 'user', content: input }];
+    const userMsg = input.trim();
+    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userMsg }];
     setMessages(newMessages);
     setInput("");
+    setIsThinking(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      setMessages([...newMessages, { 
+    try {
+      // Build context strings for the AI
+      const profileCtx = profile 
+        ? `User: ${profile.displayName}, EcoScore: ${profile.ecoScore}, Joined: ${profile.joinedAt}` 
+        : "Anonymous user in demo mode.";
+      
+      const logsCtx = recentLogs && recentLogs.length > 0
+        ? recentLogs.map(l => `${l.type} (${l.category}): ${l.emissions}kg CO2e`).join("; ")
+        : "No recent impact logs found.";
+
+      const response = await getPersonalizedCarbonCoaching({
+        userQuestion: userMsg,
+        userProfile: profileCtx,
+        currentEmissionBreakdown: logsCtx,
+        recentBehaviorChanges: "User is actively querying their footprint dashboard."
+      });
+
+      setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: "Based on your historical driving habits and your recent goal to save 100kg CO2, swapping your Tuesday cross-town commute for the subway would reach 45% of that goal immediately. This change alone would improve your Eco Score from 84 to 86.",
-        reasoning: "Reasoning: Calculated based on 15-mile commute and local subway emission factors (0.05kg/mile vs 0.4kg/mile for sedan)."
+        content: response.aiResponse,
+        reasoning: response.reasoning.whyGenerated,
+        recommendations: response.personalizedRecommendations,
+        trends: response.identifiedTrends
       }]);
-    }, 1000);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Copilot Error",
+        description: "Gemini is currently unavailable. Please try again in a moment.",
+      });
+      // Fallback response for demo stability
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: "I'm having trouble connecting to my knowledge base right now, but based on your local data, you're doing great with transportation emissions! Let's try again in a second.",
+      }]);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   return (
@@ -55,7 +135,7 @@ export default function CarbonCopilot() {
             <div>
               <div className="text-sm font-bold flex items-center gap-1.5">
                 Gemini Carbon Copilot
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                <div className={`w-1.5 h-1.5 rounded-full ${isThinking ? 'bg-primary animate-pulse' : 'bg-muted'}`}></div>
               </div>
               <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Forensic Sustainability Advisor</div>
             </div>
@@ -66,7 +146,7 @@ export default function CarbonCopilot() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
               <Avatar className="h-9 w-9 border border-border shrink-0">
@@ -75,7 +155,7 @@ export default function CarbonCopilot() {
                 ) : (
                   <>
                     <AvatarImage src={userAvatar} />
-                    <AvatarFallback>AR</AvatarFallback>
+                    <AvatarFallback>U</AvatarFallback>
                   </>
                 )}
               </Avatar>
@@ -86,6 +166,21 @@ export default function CarbonCopilot() {
                     : 'bg-primary text-primary-foreground'
                 }`}>
                   {msg.content}
+                  
+                  {msg.role === 'assistant' && msg.recommendations && msg.recommendations.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-border/50 space-y-2">
+                      <div className="text-[10px] font-bold uppercase text-primary flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Personalized Recommendations
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {msg.recommendations.map((rec, idx) => (
+                          <Badge key={idx} variant="outline" className="text-[10px] font-normal border-primary/20 bg-primary/5">
+                            {rec}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {msg.role === 'assistant' && msg.reasoning && (
                   <div className="text-[10px] text-muted-foreground italic px-2 flex items-center gap-1.5">
@@ -96,6 +191,18 @@ export default function CarbonCopilot() {
               </div>
             </div>
           ))}
+          {isThinking && (
+            <div className="flex gap-4">
+              <Avatar className="h-9 w-9 border border-border shrink-0">
+                <AvatarFallback className="bg-primary/20"><Loader2 className="w-4 h-4 animate-spin text-primary" /></AvatarFallback>
+              </Avatar>
+              <div className="bg-secondary/30 p-4 rounded-2xl h-10 w-24 flex items-center justify-center gap-1">
+                <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"></div>
+                <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:0.4s]"></div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Chat Input */}
@@ -108,6 +215,7 @@ export default function CarbonCopilot() {
                 size="sm" 
                 className="whitespace-nowrap text-[10px] uppercase font-bold border-border hover:border-primary/50 hover:bg-primary/5 h-7"
                 onClick={() => setInput(s)}
+                disabled={isThinking}
               >
                 {s}
               </Button>
@@ -121,11 +229,13 @@ export default function CarbonCopilot() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Ask your Copilot about your footprint..." 
                 className="bg-muted/50 border-none h-12 text-sm pr-12 focus-visible:ring-1 focus-visible:ring-primary/50"
+                disabled={isThinking}
               />
               <Button 
                 onClick={handleSend}
                 size="icon" 
                 className="absolute right-1.5 top-1.5 h-9 w-9 bg-primary text-primary-foreground hover:bg-primary/90"
+                disabled={isThinking || !input.trim()}
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -169,33 +279,22 @@ export default function CarbonCopilot() {
 
         <Card className="glass-card">
           <CardContent className="p-6">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Historical Trends</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Active Trends</h3>
             <div className="space-y-4">
-               <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-2">
-                   <div className="p-1.5 bg-primary/10 rounded-lg"><TrendingDown className="w-3.5 h-3.5 text-primary" /></div>
-                   <span className="text-xs text-muted-foreground">Transport</span>
+               {messages[messages.length - 1]?.trends?.slice(0, 3).map((trend, i) => (
+                 <div key={i} className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <div className="p-1.5 bg-primary/10 rounded-lg"><TrendingDown className="w-3.5 h-3.5 text-primary" /></div>
+                     <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{trend}</span>
+                   </div>
+                   <span className="text-[10px] font-bold text-primary">Detected</span>
                  </div>
-                 <span className="text-xs font-bold text-primary">-18%</span>
-               </div>
-               <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-2">
-                   <div className="p-1.5 bg-destructive/10 rounded-lg"><TrendingUp className="w-3.5 h-3.5 text-destructive" /></div>
-                   <span className="text-xs text-muted-foreground">Electricity</span>
-                 </div>
-                 <span className="text-xs font-bold text-destructive">+4.2%</span>
-               </div>
-               <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-2">
-                   <div className="p-1.5 bg-primary/10 rounded-lg"><TrendingDown className="w-3.5 h-3.5 text-primary" /></div>
-                   <span className="text-xs text-muted-foreground">Grocery</span>
-                 </div>
-                 <span className="text-xs font-bold text-primary">-5%</span>
-               </div>
+               )) || (
+                <div className="text-center py-4 text-xs text-muted-foreground italic">
+                  Ask Copilot to analyze your trends
+                </div>
+               )}
             </div>
-            <Button variant="ghost" className="w-full mt-6 text-xs text-primary font-bold hover:bg-primary/5">
-              Analyze Full Report
-            </Button>
           </CardContent>
         </Card>
       </div>
