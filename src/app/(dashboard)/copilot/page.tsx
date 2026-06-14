@@ -1,6 +1,8 @@
+
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
   Send, 
   Sparkles, 
@@ -43,11 +45,13 @@ interface ChatMessage {
   isError?: boolean;
 }
 
-export default function CarbonCopilot() {
+function CopilotContent() {
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q');
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     { 
@@ -76,19 +80,24 @@ export default function CarbonCopilot() {
     }
   }, [messages, isThinking]);
 
+  // Handle initial query from search bar
+  useEffect(() => {
+    if (initialQuery && user && messages.length === 1 && !isThinking) {
+      handleSend(initialQuery);
+    }
+  }, [initialQuery, user]);
+
   const handleSend = async (customMsg?: string) => {
     const msgText = customMsg || input.trim();
     if (!msgText || isThinking) return;
     
-    if (!customMsg) {
-      setMessages(prev => [...prev, { role: 'user', content: msgText }]);
-      setInput("");
-    }
+    // Add user message to UI
+    setMessages(prev => [...prev, { role: 'user', content: msgText }]);
+    if (!customMsg) setInput("");
     
     setIsThinking(true);
 
     try {
-      // Build context strings for the AI
       const profileCtx = profile 
         ? `User: ${profile.displayName}, EcoScore: ${profile.ecoScore}, Joined: ${profile.joinedAt}` 
         : "Anonymous user in demo mode.";
@@ -151,7 +160,6 @@ export default function CarbonCopilot() {
   return (
     <div className="h-[calc(100vh-140px)] flex gap-6 animate-in fade-in duration-700">
       <div className="flex-1 flex flex-col bg-card rounded-2xl border border-border overflow-hidden relative">
-        {/* Chat Header */}
         <div className="p-4 border-b border-border bg-background/50 backdrop-blur-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -170,7 +178,6 @@ export default function CarbonCopilot() {
           </Button>
         </div>
 
-        {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -238,7 +245,6 @@ export default function CarbonCopilot() {
           )}
         </div>
 
-        {/* Chat Input */}
         <div className="p-4 border-t border-border bg-background/50 backdrop-blur-sm">
           <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
             {suggestions.map((s, i) => (
@@ -280,7 +286,6 @@ export default function CarbonCopilot() {
         </div>
       </div>
 
-      {/* Side Profile Info */}
       <div className="w-80 space-y-6 hidden lg:block">
         <Card className="glass-card">
           <CardContent className="p-6">
@@ -332,5 +337,13 @@ export default function CarbonCopilot() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function CarbonCopilot() {
+  return (
+    <Suspense fallback={<div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+      <CopilotContent />
+    </Suspense>
   );
 }

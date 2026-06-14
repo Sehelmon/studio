@@ -1,8 +1,9 @@
 
 "use client";
 
-import { useMemo } from "react";
-import { Bell, Search, Zap, TrendingDown, Target, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, Search, Zap, TrendingDown, Target, Sparkles, Command } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,8 @@ const notifications = [
 export function TopBar() {
   const { user } = useUser();
   const db = useFirestore();
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
   const userAvatarPlaceholder = PlaceHolderImages.find(img => img.id === 'avatar-user')?.imageUrl;
 
   const profileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
@@ -49,16 +52,31 @@ export function TopBar() {
 
   const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || "Alex Rivers";
   const photoURL = profile?.photoURL || user?.photoURL || userAvatarPlaceholder;
-  const isPro = profile?.isProMember !== false; // Default to true for existing visual consistency
+  const isPro = profile?.isProMember !== false;
+
+  const handleSearch = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      router.push(`/copilot?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    }
+  };
 
   return (
     <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30 px-6 flex items-center justify-between">
-      <div className="max-w-md w-full relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="max-w-md w-full relative group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <Input 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={handleSearch}
           placeholder="Search insights, documents, or data..." 
-          className="pl-10 bg-muted/50 border-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-primary/50"
+          className="pl-10 pr-12 bg-muted/50 border-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-primary/50"
         />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+          <kbd className="hidden sm:flex h-5 select-none items-center gap-1 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+            <Command className="w-2.5 h-2.5" /> K
+          </kbd>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
