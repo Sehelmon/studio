@@ -12,6 +12,19 @@
         "ecoScore": { "type": "number" },
         "joinedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "ImpactLog": {
+      "title": "Impact Log",
+      "description": "A record of a consumption audit and its carbon impact.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "emissions": { "type": "number" },
+        "category": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "validationStatus": { "type": "string", "enum": ["verified", "mismatch", "insufficient_data"] },
+        "auditData": { "type": "object" }
+      }
     }
   },
   "auth": {
@@ -21,6 +34,10 @@
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User specific sustainability profile."
+    },
+    "/users/{userId}/impact_logs/{logId}": {
+      "schema": "ImpactLog",
+      "description": "Collection of consumption audits for a user."
     }
   }
 }

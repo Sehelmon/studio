@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef } from "react";
@@ -59,7 +60,7 @@ export default function ConsumptionAuditor() {
       try {
         const result = await autoAnalyzeConsumption({
           documentDataUri: base64String,
-          additionalContext: "Forensic auditor mode enabled. Validate all math."
+          additionalContext: "Forensic auditor mode enabled. Validate all mathematical claims by cross-referencing readings with totals."
         });
         setAnalyzedResult(result);
         
@@ -67,19 +68,19 @@ export default function ConsumptionAuditor() {
           toast({
             variant: "destructive",
             title: "Discrepancy Detected",
-            description: "Extracted data failed cross-validation checks.",
+            description: "Extracted data failed cross-validation checks. Confidence score penalized.",
           });
         } else {
           toast({
             title: "Audit Complete",
-            description: "Forensic verification successful.",
+            description: "Forensic verification successful. Data integrity confirmed.",
           });
         }
       } catch (error: any) {
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description: error.message || "Gemini could not process this document. Please ensure readings are legible.",
+          description: error.message || "Could not process this document. Please ensure readings are legible.",
         });
       } finally {
         setIsAnalyzing(false);
@@ -90,9 +91,8 @@ export default function ConsumptionAuditor() {
   };
 
   const handleConfirmImpact = () => {
-    if (!user || !analyzedResult) return;
+    if (!analyzedResult) return;
 
-    const logRef = doc(db, "users", user.uid, "impact_logs", Date.now().toString());
     const data = {
       type: analyzedResult.documentTypeIdentified,
       emissions: analyzedResult.estimatedCarbonEmissionsKgCO2e,
@@ -103,22 +103,34 @@ export default function ConsumptionAuditor() {
       rawExtracted: analyzedResult.extractedInformation
     };
 
-    setDoc(logRef, data)
-      .then(() => {
-        toast({
-          title: "Audit Logged",
-          description: "Your forensic impact has been recorded.",
+    if (user) {
+      const logId = Date.now().toString();
+      const logRef = doc(db, "users", user.uid, "impact_logs", logId);
+      
+      setDoc(logRef, data)
+        .then(() => {
+          toast({
+            title: "Audit Logged",
+            description: "Your forensic impact has been recorded in your profile.",
+          });
+          setAnalyzedResult(null);
+        })
+        .catch(async () => {
+          const permissionError = new FirestorePermissionError({
+            path: logRef.path,
+            operation: 'create',
+            requestResourceData: data,
+          });
+          errorEmitter.emit('permission-error', permissionError);
         });
-        setAnalyzedResult(null);
-      })
-      .catch(async () => {
-        const permissionError = new FirestorePermissionError({
-          path: logRef.path,
-          operation: 'create',
-          requestResourceData: data,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+    } else {
+      // Demo Mode Fallback: Provide feedback that it "worked" for simulation
+      toast({
+        title: "Logged (Demo Mode)",
+        description: "In a live environment, this audit would be saved to your persistent history.",
       });
+      setAnalyzedResult(null);
+    }
   };
 
   return (
