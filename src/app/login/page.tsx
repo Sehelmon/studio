@@ -7,15 +7,19 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signInWithPopup, 
-  GoogleAuthProvider 
+  GoogleAuthProvider,
+  updateProfile
 } from "firebase/auth";
-import { useAuth } from "@/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useAuth, useFirestore } from "@/firebase";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Globe, LogIn, Mail, Eye, EyeOff } from "lucide-react";
+import { Globe, LogIn, Mail, Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -24,7 +28,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
   const auth = useAuth();
+  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -35,14 +41,36 @@ export default function LoginPage() {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Initialize User Profile in Firestore
+        const userDocRef = doc(db, "users", user.uid);
+        const profileData = {
+          email: user.email,
+          displayName: user.displayName || email.split('@')[0],
+          photoURL: user.photoURL || "",
+          ecoScore: 50, // Starting score
+          joinedAt: serverTimestamp(),
+        };
+
+        setDoc(userDocRef, profileData, { merge: true })
+          .catch(async (error) => {
+            const permissionError = new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'create',
+              requestResourceData: profileData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          });
       }
       router.push("/dashboard");
     } catch (error: any) {
+      console.error("Auth Error:", error);
       toast({
         variant: "destructive",
         title: "Authentication Error",
-        description: error.message,
+        description: error.message || "Failed to sign in. Please check your credentials and project configuration.",
       });
     } finally {
       setLoading(false);
@@ -53,13 +81,36 @@ export default function LoginPage() {
     setLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Ensure profile exists in Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      const profileData = {
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        ecoScore: 50,
+        joinedAt: serverTimestamp(),
+      };
+
+      setDoc(userDocRef, profileData, { merge: true })
+        .catch(async () => {
+          const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'write',
+            requestResourceData: profileData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
+
       router.push("/dashboard");
     } catch (error: any) {
+      console.error("Google Auth Error:", error);
       toast({
         variant: "destructive",
         title: "Google Sign-In Error",
-        description: error.message,
+        description: error.message || "Failed to sign in with Google. Ensure Google Auth is enabled in the Firebase Console.",
       });
     } finally {
       setLoading(false);
@@ -70,7 +121,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-6 hero-gradient">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center text-center">
-          <Link href="/" className="flex items-center gap-2 mb-6">
+          <Link href="/" className="flex items-center gap-2 mb-6 outline-none">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground">
               <Globe className="w-6 h-6" />
             </div>
@@ -127,7 +178,8 @@ export default function LoginPage() {
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Processing..." : isLogin ? "Login" : "Sign Up"}
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {isLogin ? "Login" : "Sign Up"}
               </Button>
             </form>
 
@@ -141,7 +193,7 @@ export default function LoginPage() {
             </div>
 
             <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
-              <LogIn className="w-4 h-4 mr-2" />
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4 mr-2" />}
               Google
             </Button>
           </CardContent>
