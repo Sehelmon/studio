@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef } from "react";
@@ -15,7 +14,8 @@ import {
   Gauge, 
   Info,
   ShieldAlert,
-  SearchCheck
+  SearchCheck,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,10 +33,51 @@ import { cn } from "@/lib/utils";
 export default function ConsumptionAuditor() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzedResult, setAnalyzedResult] = useState<AutoAnalyzeConsumptionOutput | null>(null);
+  const [lastFile, setLastFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useUser();
   const db = useFirestore();
+
+  const processFile = async (base64String: string) => {
+    setIsAnalyzing(true);
+    setAnalyzedResult(null);
+    setLastFile(base64String);
+
+    try {
+      const result = await autoAnalyzeConsumption({
+        documentDataUri: base64String,
+        additionalContext: "Forensic auditor mode enabled. Validate all mathematical claims by cross-referencing readings with totals."
+      });
+      setAnalyzedResult(result);
+      
+      if (result.validationStatus === 'mismatch') {
+        toast({
+          variant: "destructive",
+          title: "Discrepancy Detected",
+          description: "Extracted data failed cross-validation checks. Confidence score penalized.",
+        });
+      } else {
+        toast({
+          title: "Audit Complete",
+          description: "Forensic verification successful. Data integrity confirmed.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Auditor Flow Error:", error);
+      const isQuotaError = error.message?.toLowerCase().includes('quota') || error.message?.toLowerCase().includes('limit');
+      
+      toast({
+        variant: "destructive",
+        title: isQuotaError ? "AI Service Busy" : "Analysis Failed",
+        description: isQuotaError 
+          ? "AI analysis temporarily unavailable due to high demand. Please try again later."
+          : "Could not process this document. Please ensure readings are legible and try again.",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -51,43 +92,16 @@ export default function ConsumptionAuditor() {
       return;
     }
 
-    setIsAnalyzing(true);
-    setAnalyzedResult(null);
-
     const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result as string;
-      try {
-        const result = await autoAnalyzeConsumption({
-          documentDataUri: base64String,
-          additionalContext: "Forensic auditor mode enabled. Validate all mathematical claims by cross-referencing readings with totals."
-        });
-        setAnalyzedResult(result);
-        
-        if (result.validationStatus === 'mismatch') {
-          toast({
-            variant: "destructive",
-            title: "Discrepancy Detected",
-            description: "Extracted data failed cross-validation checks. Confidence score penalized.",
-          });
-        } else {
-          toast({
-            title: "Audit Complete",
-            description: "Forensic verification successful. Data integrity confirmed.",
-          });
-        }
-      } catch (error: any) {
-        toast({
-          variant: "destructive",
-          title: "Analysis Failed",
-          description: error.message || "Could not process this document. Please ensure readings are legible.",
-        });
-      } finally {
-        setIsAnalyzing(false);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
+    reader.onloadend = () => {
+      processFile(reader.result as string);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRetry = () => {
+    if (lastFile) processFile(lastFile);
   };
 
   const handleConfirmImpact = () => {
@@ -124,7 +138,6 @@ export default function ConsumptionAuditor() {
           errorEmitter.emit('permission-error', permissionError);
         });
     } else {
-      // Demo Mode Fallback: Provide feedback that it "worked" for simulation
       toast({
         title: "Logged (Demo Mode)",
         description: "In a live environment, this audit would be saved to your persistent history.",
@@ -169,13 +182,20 @@ export default function ConsumptionAuditor() {
                 AI cross-checks (Present - Previous) against printed totals to detect bill errors.
               </p>
               {!isAnalyzing && (
-                <Button 
-                  onClick={() => fileInputRef.current?.click()} 
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  Choose Document
-                </Button>
+                <div className="flex flex-col gap-2 w-full max-w-[140px]">
+                  <Button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    size="sm"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Choose Document
+                  </Button>
+                  {lastFile && !analyzedResult && (
+                    <Button variant="ghost" size="xs" onClick={handleRetry} className="text-[10px] text-muted-foreground h-7">
+                      <RefreshCw className="w-3 h-3 mr-1" /> Retry Last Upload
+                    </Button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -332,7 +352,7 @@ export default function ConsumptionAuditor() {
               </Card>
 
               <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="border-border" onClick={() => setAnalyzedResult(null)}>
+                <Button variant="outline" className="border-border" onClick={() => { setAnalyzedResult(null); setLastFile(null); }}>
                   Discard Audit
                 </Button>
                 <Button 

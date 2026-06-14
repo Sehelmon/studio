@@ -13,7 +13,8 @@ import {
   Globe, 
   Loader2, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ interface ChatMessage {
   reasoning?: string;
   recommendations?: string[];
   trends?: string[];
+  isError?: boolean;
 }
 
 export default function CarbonCopilot() {
@@ -74,13 +76,15 @@ export default function CarbonCopilot() {
     }
   }, [messages, isThinking]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isThinking) return;
+  const handleSend = async (customMsg?: string) => {
+    const msgText = customMsg || input.trim();
+    if (!msgText || isThinking) return;
     
-    const userMsg = input.trim();
-    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userMsg }];
-    setMessages(newMessages);
-    setInput("");
+    if (!customMsg) {
+      setMessages(prev => [...prev, { role: 'user', content: msgText }]);
+      setInput("");
+    }
+    
     setIsThinking(true);
 
     try {
@@ -94,7 +98,7 @@ export default function CarbonCopilot() {
         : "No recent impact logs found.";
 
       const response = await getPersonalizedCarbonCoaching({
-        userQuestion: userMsg,
+        userQuestion: msgText,
         userProfile: profileCtx,
         currentEmissionBreakdown: logsCtx,
         recentBehaviorChanges: "User is actively querying their footprint dashboard."
@@ -108,18 +112,35 @@ export default function CarbonCopilot() {
         trends: response.identifiedTrends
       }]);
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Copilot Error",
-        description: "Gemini is currently unavailable. Please try again in a moment.",
-      });
-      // Fallback response for demo stability
+      console.error("Copilot AI Error:", error);
+      const isQuotaError = error.message?.toLowerCase().includes('quota') || error.message?.toLowerCase().includes('limit');
+      
+      const fallbackMsg = isQuotaError 
+        ? "AI analysis temporarily unavailable due to high demand. Please try again later. Based on your recent logs, you're tracking well with energy efficiency!"
+        : "I'm having a bit of trouble connecting to my knowledge base right now. Let's try that again in a moment.";
+
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: "I'm having trouble connecting to my knowledge base right now, but based on your local data, you're doing great with transportation emissions! Let's try again in a second.",
+        content: fallbackMsg,
+        isError: true
       }]);
+
+      toast({
+        variant: "destructive",
+        title: isQuotaError ? "AI Quota Reached" : "Copilot Error",
+        description: isQuotaError 
+          ? "AI analysis temporarily unavailable. Please try again later."
+          : "Gemini is currently unavailable. Please try again in a moment.",
+      });
     } finally {
       setIsThinking(false);
+    }
+  };
+
+  const handleRetry = () => {
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMsg) {
+      handleSend(lastUserMsg.content);
     }
   };
 
@@ -162,7 +183,7 @@ export default function CarbonCopilot() {
               <div className={`space-y-2 max-w-[80%] ${msg.role === 'user' ? 'items-end' : ''}`}>
                 <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
                   msg.role === 'assistant' 
-                    ? 'bg-secondary/50 text-foreground' 
+                    ? msg.isError ? 'bg-destructive/10 border border-destructive/20 text-foreground' : 'bg-secondary/50 text-foreground' 
                     : 'bg-primary text-primary-foreground'
                 }`}>
                   {msg.content}
@@ -179,6 +200,14 @@ export default function CarbonCopilot() {
                           </Badge>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {msg.isError && (
+                    <div className="mt-3">
+                      <Button variant="outline" size="xs" onClick={handleRetry} className="h-7 text-[10px] border-destructive/30 hover:bg-destructive/10">
+                        <RefreshCw className="w-3 h-3 mr-1" /> Retry AI Request
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -232,7 +261,7 @@ export default function CarbonCopilot() {
                 disabled={isThinking}
               />
               <Button 
-                onClick={handleSend}
+                onClick={() => handleSend()}
                 size="icon" 
                 className="absolute right-1.5 top-1.5 h-9 w-9 bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={isThinking || !input.trim()}

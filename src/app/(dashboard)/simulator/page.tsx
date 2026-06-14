@@ -1,21 +1,22 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Binary, TrendingDown, RefreshCw, Zap, Car, Utensils, Home, Loader2, CheckCircle2, Info, Sparkles } from "lucide-react";
+import { Binary, TrendingDown, RefreshCw, Zap, Car, Utensils, Home, Loader2, CheckCircle2, Info, Sparkles, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { simulateCarbonImpact, type SimulateCarbonImpactOutput } from "@/ai/flows/simulate-carbon-impact";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 export default function CarbonTwin() {
   const [isSimulating, setIsSimulating] = useState(false);
-  const [simulationResult, setSimulationResult] = useState<SimulateCarbonImpactOutput | null>(null);
+  const [isQuotaError, setIsQuotaError] = useState(false);
+  const [simulationResult, setSimulationResult] = useState< SimulateCarbonImpactOutput | null>(null);
   const { toast } = useToast();
 
   // Input states
@@ -27,6 +28,7 @@ export default function CarbonTwin() {
 
   const runSimulation = useCallback(async () => {
     setIsSimulating(true);
+    setIsQuotaError(false);
     try {
       const lifestyleChanges = [];
 
@@ -83,10 +85,51 @@ export default function CarbonTwin() {
 
       setSimulationResult(result);
     } catch (error: any) {
+      console.error("Simulation Flow Error:", error);
+      const isQuota = error.message?.toLowerCase().includes('quota') || error.message?.toLowerCase().includes('limit');
+      
+      if (isQuota) {
+        setIsQuotaError(true);
+        // Fallback estimate: Perform basic math if AI fails
+        const savings: Record<string, number> = {};
+        let totalSavings = 0;
+        
+        if (commute[0] < 50) {
+          savings.transportation = (50 - commute[0]) * 0.4; // 0.4kg per mile
+          totalSavings += savings.transportation;
+        }
+        if (isEV) {
+          savings.transportation = (savings.transportation || 0) + 120;
+          totalSavings += 120;
+        }
+        
+        const fallbackResult: SimulateCarbonImpactOutput = {
+          predictedCarbonFootprint: {
+            transportation: 450 - (savings.transportation || 0),
+            diet: 150,
+            homeEnergy: 300,
+            consumption: 300,
+            total: 1200 - totalSavings
+          },
+          totalCarbonReductionKgCO2e: totalSavings,
+          ecoScoreChangePercentage: (totalSavings / 1200) * 10,
+          aiReasoning: {
+            explanation: "Predictive analysis is currently in high-availability fallback mode. Estimates are calculated based on standard emission factors.",
+            contributingBehaviors: lifestyleChanges.map(l => l.description),
+            estimatedEnvironmentalImpact: `Estimated offset of ${totalSavings.toFixed(1)}kg CO2e annually.`,
+            estimatedCarbonSavingsBreakdown: savings,
+            suggestedNextAction: "Check back later for deep Gemini reasoning."
+          }
+        };
+        setSimulationResult(fallbackResult);
+      }
+
       toast({
         variant: "destructive",
-        title: "Simulation Failed",
-        description: error.message || "Gemini could not process the digital twin model.",
+        title: isQuota ? "AI Analysis Temporarily Unavailable" : "Simulation Failed",
+        description: isQuota 
+          ? "We're currently experiencing high demand. Showing basic mathematical estimates."
+          : "Gemini could not process the digital twin model. Please try again.",
       });
     } finally {
       setIsSimulating(false);
@@ -250,14 +293,29 @@ export default function CarbonTwin() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <Badge className="bg-accent text-white border-none px-3 py-1 font-bold uppercase tracking-tighter">Gemini Predicted</Badge>
+                <Badge className={cn("text-white border-none px-3 py-1 font-bold uppercase tracking-tighter", isQuotaError ? "bg-amber-500" : "bg-accent")}>
+                  {isQuotaError ? "Estimated Fallback" : "Gemini Predicted"}
+                </Badge>
                 <div className="text-[10px] text-muted-foreground text-right italic max-w-[150px]">
-                  Based on local grid data and historical lifestyle audit
+                  {isQuotaError ? "Basic mathematical projection based on global factors" : "Based on local grid data and historical lifestyle audit"}
                 </div>
               </div>
             </div>
 
             <CardContent className="p-8 flex-1">
+               {isQuotaError && (
+                 <Alert className="mb-6 bg-amber-500/10 border-amber-500/30 text-amber-500">
+                   <AlertTriangle className="h-4 w-4" />
+                   <AlertTitle className="text-xs font-bold uppercase tracking-tight">AI Service Capacity Reached</AlertTitle>
+                   <AlertDescription className="text-[10px]">
+                     Deep analysis is temporarily unavailable. Showing mathematical estimates based on standard emission factors.
+                   </AlertDescription>
+                   <Button variant="outline" size="xs" onClick={runSimulation} className="mt-2 h-7 text-[10px] border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                     <RefreshCw className="w-3 h-3 mr-1" /> Retry AI Simulation
+                   </Button>
+                 </Alert>
+               )}
+
                <div className="flex items-center gap-2 mb-6">
                  <Binary className="w-5 h-5 text-primary" />
                  <h3 className="text-lg font-headline font-bold">Predictive Twin Reasoning</h3>
@@ -285,9 +343,12 @@ export default function CarbonTwin() {
                             {Object.entries(simulationResult.aiReasoning.estimatedCarbonSavingsBreakdown).map(([category, savings]) => (
                               <div key={category} className="flex justify-between items-center text-xs">
                                 <span className="capitalize text-muted-foreground">{category.replace('_', ' ')}</span>
-                                <span className="font-bold text-primary">-{savings}kg</span>
+                                <span className="font-bold text-primary">-{savings.toFixed(1)}kg</span>
                               </div>
                             ))}
+                            {Object.keys(simulationResult.aiReasoning.estimatedCarbonSavingsBreakdown).length === 0 && (
+                              <div className="text-xs text-muted-foreground italic">No savings detected for these parameters.</div>
+                            )}
                           </div>
                         </div>
                         <div className="space-y-4">
@@ -309,7 +370,7 @@ export default function CarbonTwin() {
                       </div>
                     </>
                   ) : (
-                    <div className="h-40 flex items-center justify-center text-muted-foreground italic text-sm">
+                    <div className="h-40 flex items-center justify-center text-muted-foreground italic text-sm text-center p-8">
                       Select lifestyle changes to generate AI insights.
                     </div>
                   )}
