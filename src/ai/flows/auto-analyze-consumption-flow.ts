@@ -2,10 +2,8 @@
 /**
  * @fileOverview An AI agent that analyzes uploaded consumption documents (bills, receipts) to extract data,
  * categorize spending, estimate carbon emissions, explain contributors, and provide personalized insights.
- *
- * - autoAnalyzeConsumption - A function that handles the document analysis process.
- * - AutoAnalyzeConsumptionInput - The input type for the autoAnalyzeConsumption function.
- * - AutoAnalyzeConsumptionOutput - The return type for the autoAnalyzeConsumption function.
+ * 
+ * Updated for forensic precision in meter reading calculations and transparent breakdowns.
  */
 
 import {ai} from '@/ai/genkit';
@@ -39,25 +37,36 @@ export type AutoAnalyzeConsumptionInput = z.infer<
 const AutoAnalyzeConsumptionOutputSchema = z.object({
   documentTypeIdentified: z
     .string()
-    .describe('The type of document identified by the AI (e.g., "Electricity Bill", "Fuel Receipt").'),
+    .describe('The type of document identified by the AI.'),
   extractedInformation: z
     .record(z.string(), z.string())
-    .describe('Key-value pairs of extracted data from the document (e.g., {"provider": "Con Edison", "amount": "$120.50", "kwh_consumed": "500"}).'),
+    .describe('Key-value pairs of raw data extracted.'),
   spendingCategory: z
     .string()
-    .describe('The broad categorized spending area (e.g., "Utilities", "Transportation", "Food").'),
+    .describe('Categorized spending area (e.g., "Utilities", "Transportation").'),
   estimatedCarbonEmissionsKgCO2e: z
     .number()
-    .describe('Estimated carbon emissions in kilograms of CO2 equivalent.'),
+    .describe('Final calculated carbon emissions in kg CO2e.'),
+  confidenceScore: z
+    .number()
+    .describe('AI confidence in the extraction accuracy (0.0 to 1.0).'),
+  auditDetails: z.object({
+    previousReading: z.string().optional().describe('Raw previous meter reading if found.'),
+    presentReading: z.string().optional().describe('Raw present meter reading if found.'),
+    totalUnits: z.number().describe('The primary consumption value used for calculation (e.g., kWh).'),
+    unitType: z.string().describe('The unit of measure (e.g., "kWh", "Liters").'),
+    calculationMethod: z.string().describe('Description of how units were derived (e.g., "Extracted from Total Unit field" or "Present - Previous").'),
+    carbonFormula: z.string().describe('The math used: "Units * Factor = Result".'),
+  }),
   emissionContributors: z
     .array(z.string())
-    .describe('List of major factors identified by the AI contributing to the emissions (e.g., "High electricity usage in winter months").'),
+    .describe('Factors contributing to the emissions.'),
   personalizedInsights: z
     .string()
-    .describe('Personalized insights and actionable recommendations to reduce emissions.'),
+    .describe('Actionable advice.'),
   reasoning: z
     .string()
-    .describe('A detailed explanation from the AI about why this analysis was generated, linking to user behaviors, estimated environmental impact, and suggested next actions.'),
+    .describe('AI forensic reasoning for the specific numbers reported.'),
 });
 export type AutoAnalyzeConsumptionOutput = z.infer<
   typeof AutoAnalyzeConsumptionOutputSchema
@@ -73,24 +82,21 @@ const prompt = ai.definePrompt({
   name: 'autoAnalyzeConsumptionPrompt',
   input: {schema: AutoAnalyzeConsumptionInputSchema},
   output: {schema: AutoAnalyzeConsumptionOutputSchema},
-  prompt: `You are an expert sustainability consultant, financial auditor, and AI data extraction specialist.
-Your primary goal is to analyze provided documents to automatically extract consumption data, categorize spending, estimate carbon emissions, explain major contributors, and generate highly personalized insights, minimizing manual user effort.
+  prompt: `You are an expert forensic sustainability auditor. Your primary goal is to extract consumption data with 100% mathematical accuracy from bills and receipts.
 
-Analyze the provided document image and perform the following tasks:
-1.  **Identify Document Type**: Determine if the document is an electricity bill, fuel receipt, grocery receipt, transportation document, or other.
-2.  **Extract Key Information**: Accurately extract all relevant data such as provider/vendor name, dates, amounts, consumption units (e.g., kWh, liters, miles), itemized lists, etc.
-3.  **Categorize Spending**: Assign a broad spending category to the consumption (e.g., Utilities, Transportation, Food).
-4.  **Estimate Carbon Emissions**: Based on the extracted consumption data and common knowledge about emission factors (e.g., average grid intensity for electricity, CO2 per liter of fuel), estimate the carbon emissions in kilograms of CO2 equivalent (kg CO2e). If specific values are missing, make a reasonable estimation and note any assumptions.
-5.  **Identify Major Contributors**: Explain what specific aspects of the consumption significantly contributed to the estimated emissions.
-6.  **Generate Personalized Insights**: Provide actionable, personalized advice and recommendations to reduce emissions based on the extracted data.
-7.  **Provide Reasoning**: Explain *why* this analysis was generated, linking specific user behaviors (as indicated by the document) to the estimated environmental impact. Include suggestions for next actions.
+DIRECTIONS FOR DATA EXTRACTION:
+1. **Prioritize Explicit Totals**: Look for fields like "Total Unit", "Units Consumed", "Usage", or "Consumption". If found, use this value as the primary totalUnits.
+2. **Calculate if Missing**: If an explicit total is missing but "Previous Reading" and "Present Reading" are available, calculate: totalUnits = Present Reading - Previous Reading.
+3. **Verify the Math**: If both readings and a total are present, verify if they align. If they don't, prioritize the most logical "Total" field found on the document and explain the discrepancy in the reasoning.
+4. **Determine Unit Type**: Identify if the units are kWh, liters, gallons, etc.
+5. **Calculate Carbon**: Apply standard emission factors (e.g., ~0.4 kg CO2e/kWh for electricity, ~2.3 kg CO2e/L for petrol) to the totalUnits to get estimatedCarbonEmissionsKgCO2e.
 
+INPUT DATA:
 Document Image: {{media url=documentDataUri}}
-{{#if documentType}}Known Document Type: {{{documentType}}}{{/if}}
-{{#if additionalContext}}Additional Context: {{{additionalContext}}}{{/if}}
+{{#if documentType}}Type Hint: {{{documentType}}}{{/if}}
+{{#if additionalContext}}Context: {{{additionalContext}}}{{/if}}
 
-Ensure your output strictly adheres to the provided JSON schema. Pay close attention to the data types, especially for 'estimatedCarbonEmissionsKgCO2e' which must be a number.
-`,
+Output must be forensic, transparent, and strictly follow the schema. Accuracy is more important than generic advice.`,
 });
 
 const autoAnalyzeConsumptionFlow = ai.defineFlow(
