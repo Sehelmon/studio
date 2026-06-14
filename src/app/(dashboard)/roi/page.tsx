@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -81,7 +80,6 @@ export default function ROIConsultant() {
       
       if (isQuota) {
         setIsQuotaError(true);
-        // Provide fallback estimate for common scenarios
         const fallbackResult: CalculateRoiOutput = {
           estimatedUpfrontCost: inputData.projectType === 'solar' ? 15000 : 8000,
           annualSavings: inputData.currentMonthlySpend * 6,
@@ -106,6 +104,14 @@ export default function ROIConsultant() {
     } finally {
       setIsSimulating(false);
     }
+  };
+
+  const handleConsultation = () => {
+    if (!result) return;
+    toast({
+      title: "Consultation Request Sent",
+      description: `We've flagged your ${formData.projectType.replace('_', ' ')} interest. A certified installer in ${formData.location} will contact you shortly.`,
+    });
   };
 
   return (
@@ -361,7 +367,10 @@ export default function ROIConsultant() {
                   </div>
 
                   <div className="mt-8">
-                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-6 text-lg font-headline font-bold group">
+                    <Button 
+                      onClick={handleConsultation}
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-6 text-lg font-headline font-bold group"
+                    >
                       {result.aiReasoning.suggestedNextAction}
                       <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </Button>
@@ -376,7 +385,7 @@ export default function ROIConsultant() {
               </div>
               <div className="text-muted-foreground font-headline font-bold text-lg">Awaiting custom parameters...</div>
               <p className="text-muted-foreground text-sm mt-2 max-w-[320px] leading-relaxed">
-                Click \"New Custom Audit\" or select a quick estimate to see your projected ROI and carbon offset.
+                Click "New Custom Audit" or select a quick estimate to see your projected ROI and carbon offset.
               </p>
             </div>
           )}
