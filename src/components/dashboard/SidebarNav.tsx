@@ -87,10 +87,16 @@ export function SidebarNav() {
       </div>
 
       <div className="p-4 border-t border-sidebar-border space-y-2">
-        <button className="flex items-center gap-3 px-3 py-2 w-full text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <Link
+          href="/settings"
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+            pathname === "/settings" ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
           <Settings className="w-5 h-5" />
           Settings
-        </button>
+        </Link>
         <button 
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 w-full text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors"

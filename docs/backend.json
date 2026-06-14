@@ -10,7 +10,10 @@
         "email": { "type": "string", "format": "email" },
         "photoURL": { "type": "string" },
         "ecoScore": { "type": "number" },
-        "joinedAt": { "type": "string", "format": "date-time" }
+        "joinedAt": { "type": "string", "format": "date-time" },
+        "location": { "type": "string", "description": "The user's primary geographical location." },
+        "sustainabilityGoals": { "type": "string", "description": "User's stated environmental objectives." },
+        "userHabits": { "type": "string", "description": "Known consumption patterns and habits." }
       }
     },
     "ImpactLog": {
