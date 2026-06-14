@@ -1,6 +1,6 @@
-
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,8 @@ import {
   Globe,
   LogOut
 } from "lucide-react";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, useFirestore, useDoc } from "@/firebase";
+import { doc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 
@@ -35,6 +36,14 @@ export function SidebarNav() {
   const auth = useAuth();
   const router = useRouter();
   const { user } = useUser();
+  const db = useFirestore();
+
+  const profileRef = useMemo(() => {
+    const uid = user?.uid || "demo-user";
+    return doc(db, "users", uid);
+  }, [db, user]);
+
+  const { data: profile } = useDoc(profileRef);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -78,7 +87,10 @@ export function SidebarNav() {
             <ShieldCheck className="w-4 h-4 text-primary" />
             <span className="text-xs font-bold uppercase tracking-tight">Eco Score</span>
           </div>
-          <div className="text-2xl font-headline font-bold mb-1">84<span className="text-sm text-muted-foreground font-normal">/100</span></div>
+          <div className="text-2xl font-headline font-bold mb-1">
+            {profile?.ecoScore || 84}
+            <span className="text-sm text-muted-foreground font-normal">/100</span>
+          </div>
           <div className="flex items-center gap-1 text-[10px] text-primary font-medium">
             <TrendingDown className="w-3 h-3" />
             -4.2% kg CO2e this month

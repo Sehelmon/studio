@@ -46,12 +46,17 @@ export function TopBar() {
   const [searchQuery, setSearchQuery] = useState("");
   const userAvatarPlaceholder = PlaceHolderImages.find(img => img.id === 'avatar-user')?.imageUrl;
 
-  const profileRef = useMemo(() => user ? doc(db, "users", user.uid) : null, [db, user]);
+  // Use a stable fallback ID for demo mode to ensure reactivity
+  const profileRef = useMemo(() => {
+    const uid = user?.uid || "demo-user";
+    return doc(db, "users", uid);
+  }, [db, user]);
+  
   const { data: profile } = useDoc(profileRef);
 
   const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || "Alex Rivers";
   const photoURL = profile?.photoURL || user?.photoURL || userAvatarPlaceholder;
-  const isPro = profile?.isProMember !== false;
+  const isPro = profile?.isProMember === true;
 
   const handleSearch = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {

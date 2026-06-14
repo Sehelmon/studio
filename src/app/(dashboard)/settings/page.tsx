@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   User, 
   MapPin, 
@@ -23,7 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useUser, useFirestore, useDoc } from "@/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -39,10 +38,15 @@ export default function SettingsPage() {
     location: "",
     sustainabilityGoals: "",
     userHabits: "",
-    isProMember: true,
+    isProMember: false,
   });
 
-  const profileRef = user ? doc(db, "users", user.uid) : null;
+  // Support demo mode by using a fixed ID if no user is authenticated
+  const profileRef = useMemo(() => {
+    const uid = user?.uid || "demo-user";
+    return doc(db, "users", uid);
+  }, [db, user]);
+
   const { data: profile, loading: profileLoading } = useDoc(profileRef);
 
   useEffect(() => {
@@ -52,14 +56,14 @@ export default function SettingsPage() {
         location: profile.location || "San Francisco, CA",
         sustainabilityGoals: profile.sustainabilityGoals || "Reduce household energy consumption by 20%.",
         userHabits: profile.userHabits || "Drives to work daily, leaves lights on frequently.",
-        isProMember: profile.isProMember !== false,
+        isProMember: profile.isProMember === true,
       });
     }
   }, [profile]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !profileRef) return;
+    if (!profileRef) return;
 
     setIsSaving(true);
     const updateData = {
@@ -67,7 +71,8 @@ export default function SettingsPage() {
       updatedAt: new Date().toISOString(),
     };
 
-    updateDoc(profileRef, updateData)
+    // Use setDoc with merge to ensure demo users can create their doc
+    setDoc(profileRef, updateData, { merge: true })
       .then(() => {
         toast({
           title: "Profile Updated",
@@ -124,6 +129,7 @@ export default function SettingsPage() {
                       <Input 
                         id="displayName" 
                         className="pl-9" 
+                        placeholder="e.g., Alex Rivers"
                         value={formData.displayName}
                         onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
                       />
@@ -243,7 +249,7 @@ export default function SettingsPage() {
             </div>
             <CardContent className="p-6 text-center pt-10">
               <h3 className="text-lg font-bold">{formData.displayName || "Alex Rivers"}</h3>
-              <p className="text-xs text-muted-foreground mb-2">{user?.email}</p>
+              <p className="text-xs text-muted-foreground mb-2">{user?.email || "demo@ecologic.ai"}</p>
               {formData.isProMember && (
                 <div className="text-[10px] font-bold text-primary uppercase tracking-tighter mb-4">Pro Member</div>
               )}
