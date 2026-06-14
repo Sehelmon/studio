@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Globe, Zap, Shield, BarChart3, Binary, Rocket } from "lucide-react";
+import { ArrowRight, Globe, Zap, Binary, Rocket, Target, Building2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function LandingPage() {
   return (
@@ -19,7 +20,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
             <Link href="#features" className="hover:text-primary transition-colors">Features</Link>
             <Link href="#about" className="hover:text-primary transition-colors">Mission</Link>
-            <Link href="#pricing" className="hover:text-primary transition-colors">Enterprise</Link>
+            <Link href="#enterprise" className="hover:text-primary transition-colors">Enterprise</Link>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/dashboard">
@@ -82,7 +83,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Grid */}
-      <section id="features" className="py-32">
+      <section id="features" className="py-32 scroll-mt-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-20">
             <h2 className="text-4xl md:text-6xl font-headline font-bold mb-6">Forensic Carbon Intelligence</h2>
@@ -115,6 +116,88 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Mission Section */}
+      <section id="about" className="py-32 bg-secondary/20 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-6">
+                <Target className="w-3 h-3" />
+                OUR MISSION
+              </div>
+              <h2 className="text-4xl md:text-6xl font-headline font-bold mb-8 leading-tight">
+                Democratizing <span className="text-primary">Environmental</span> Accountability
+              </h2>
+              <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+                We believe that carbon tracking should be as effortless as checking your bank balance. Our mission is to leverage hyper-advanced AI to give every individual the tools to understand their impact and take meaningful action toward a sustainable future.
+              </p>
+              <ul className="space-y-4">
+                {[
+                  "Eliminate manual data entry via AI OCR",
+                  "Provide science-based impact predictions",
+                  "Foster a community of accountability",
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-sm font-medium">
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="relative">
+              <div className="aspect-square rounded-[40px] overflow-hidden border border-border relative z-10">
+                <img 
+                  src="https://picsum.photos/seed/mission-1/800/800" 
+                  alt="Environmental Mission" 
+                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
+                  data-ai-hint="nature forest"
+                />
+              </div>
+              <div className="absolute -top-8 -right-8 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-0"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Enterprise Section */}
+      <section id="enterprise" className="py-32 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold mb-6">
+            <Building2 className="w-3 h-3" />
+            FOR ORGANIZATIONS
+          </div>
+          <h2 className="text-4xl md:text-6xl font-headline font-bold mb-8">Scale Your Impact</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-16">
+            EcoLogic AI for Enterprise provides organizations with the tools to track Scope 3 emissions, engage employees in sustainability, and automate ESG reporting.
+          </p>
+          
+          <div className="grid md:grid-cols-3 gap-8 text-left">
+            <Card className="glass-card p-8 border-accent/20">
+              <h3 className="text-xl font-bold mb-4">ESG Automation</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Automatically aggregate consumption data across your entire supply chain with forensic-grade accuracy.
+              </p>
+            </Card>
+            <Card className="glass-card p-8 border-accent/20">
+              <h3 className="text-xl font-bold mb-4">Employee Engagement</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Gamify sustainability with custom challenges and rewards tailored to your corporate climate goals.
+              </p>
+            </Card>
+            <Card className="glass-card p-8 border-accent/20">
+              <h3 className="text-xl font-bold mb-4">Custom Modeling</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Build bespoke digital twins to simulate the impact of large-scale infrastructure and policy changes.
+              </p>
+            </Card>
+          </div>
+          
+          <Button size="lg" className="mt-16 bg-accent text-white hover:bg-accent/90">
+            Contact Enterprise Sales
+          </Button>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-32 px-6">
         <div className="max-w-5xl mx-auto p-12 md:p-20 rounded-[40px] bg-primary relative overflow-hidden text-primary-foreground text-center">
@@ -139,7 +222,7 @@ export default function LandingPage() {
       <footer className="py-20 border-t border-border">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-primary-foreground">
+            <div className="w-6 gold-6 bg-primary rounded flex items-center justify-center text-primary-foreground">
               <Globe className="w-4 h-4" />
             </div>
             <span className="font-headline font-bold text-lg tracking-tighter">EcoLogic AI</span>
