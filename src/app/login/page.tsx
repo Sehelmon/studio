@@ -7,10 +7,9 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signInWithPopup, 
-  GoogleAuthProvider,
-  updateProfile
+  GoogleAuthProvider
 } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -19,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Globe, LogIn, Mail, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Globe, LogIn, Mail, Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -38,6 +37,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      // Basic check for empty config to provide a better error message
+      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+        throw new Error("Firebase API Key is missing. Please check your .env file or use Demo Mode.");
+      }
+
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
@@ -55,7 +59,7 @@ export default function LoginPage() {
         };
 
         setDoc(userDocRef, profileData, { merge: true })
-          .catch(async (error) => {
+          .catch(async () => {
             const permissionError = new FirestorePermissionError({
               path: userDocRef.path,
               operation: 'create',
@@ -70,11 +74,19 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Authentication Error",
-        description: error.message || "Failed to sign in. Please check your credentials and project configuration.",
+        description: error.message || "Failed to sign in. If you don't have keys configured yet, try Demo Mode.",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoMode = () => {
+    toast({
+      title: "Entering Demo Mode",
+      description: "Bypassing authentication for demonstration purposes.",
+    });
+    router.push("/dashboard");
   };
 
   const handleGoogleSignIn = async () => {
@@ -84,7 +96,6 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Ensure profile exists in Firestore
       const userDocRef = doc(db, "users", user.uid);
       const profileData = {
         email: user.email,
@@ -110,7 +121,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Google Sign-In Error",
-        description: error.message || "Failed to sign in with Google. Ensure Google Auth is enabled in the Firebase Console.",
+        description: error.message || "Failed to sign in with Google. Try Demo Mode if keys are not set up.",
       });
     } finally {
       setLoading(false);
@@ -128,7 +139,7 @@ export default function LoginPage() {
             <span className="font-headline font-bold text-2xl tracking-tighter">EcoLogic AI</span>
           </Link>
           <h1 className="text-3xl font-headline font-bold">Welcome Back</h1>
-          <p className="text-muted-foreground mt-2">Enter your credentials to access your carbon twin.</p>
+          <p className="text-muted-foreground mt-2">Enter your credentials or try our demo environment.</p>
         </div>
 
         <Card className="glass-card">
@@ -188,13 +199,24 @@ export default function LoginPage() {
                 <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            <Button variant="outline" className="w-full border-primary/50 text-primary hover:bg-primary/5" onClick={handleDemoMode}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Enter Demo Mode (No Key Required)
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
               </div>
             </div>
 
             <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4 mr-2" />}
-              Google
+              Continue with Google
             </Button>
           </CardContent>
           <CardFooter>
