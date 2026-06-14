@@ -216,8 +216,16 @@ The application follows secure development practices:
 - Secure Firestore access patterns
 - Principle of least privilege
 
----
+--
 
+## Assumptions
+
+- Emission factors are estimated using publicly available reference values.
+- OCR accuracy depends on document quality.
+- Carbon forecasts are predictive estimates and not exact measurements.
+- Users may use Demo Mode without authentication.
+
+  
 # Accessibility
 
 EcoLogic AI is designed with accessibility in mind:
