@@ -1,11 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Sparkles, ArrowRight, Eye } from "lucide-react";
+import { useState, useRef } from "react";
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { autoAnalyzeConsumption, type AutoAnalyzeConsumptionOutput } from "@/ai/flows/auto-analyze-consumption-flow";
 import { useToast } from "@/hooks/use-toast";
@@ -17,30 +16,64 @@ import { FirestorePermissionError } from "@/firebase/errors";
 export default function ConsumptionAuditor() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzedResult, setAnalyzedResult] = useState<AutoAnalyzeConsumptionOutput | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useUser();
   const db = useFirestore();
 
-  const handleFileUpload = async () => {
-    // In a real app, this would handle actual file selection and base64 conversion
-    // For this MVP, we use a placeholder image seed to represent the bill
-    setIsAnalyzing(true);
-    try {
-      const result = await autoAnalyzeConsumption({
-        documentDataUri: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/", // Mock data URI
-        documentType: 'electricity_bill',
-        additionalContext: "User is checking their monthly spending."
-      });
-      setAnalyzedResult(result);
-    } catch (error: any) {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
       toast({
         variant: "destructive",
-        title: "Analysis Failed",
-        description: error.message || "Could not analyze the document.",
+        title: "Invalid file type",
+        description: "Please upload an image or PDF document.",
       });
-    } finally {
-      setIsAnalyzing(false);
+      return;
     }
+
+    setIsAnalyzing(true);
+    setAnalyzedResult(null);
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result as string;
+      try {
+        const result = await autoAnalyzeConsumption({
+          documentDataUri: base64String,
+          additionalContext: "User uploaded a document for forensic carbon analysis."
+        });
+        setAnalyzedResult(result);
+        toast({
+          title: "Analysis Complete",
+          description: `Identified as: ${result.documentTypeIdentified}`,
+        });
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Analysis Failed",
+          description: error.message || "Gemini could not process this document. Please try a clearer photo.",
+        });
+      } finally {
+        setIsAnalyzing(false);
+        // Reset input so the same file can be uploaded again if needed
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+
+    reader.onerror = () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not read the file.",
+      });
+      setIsAnalyzing(false);
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleConfirmImpact = () => {
@@ -61,6 +94,7 @@ export default function ConsumptionAuditor() {
           title: "Impact Logged",
           description: "Your carbon footprint has been updated successfully.",
         });
+        setAnalyzedResult(null);
       })
       .catch(async () => {
         const permissionError = new FirestorePermissionError({
@@ -81,8 +115,15 @@ export default function ConsumptionAuditor() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-6">
-          <Card className="glass-card border-dashed border-2 border-primary/30 bg-primary/5">
+          <Card className="glass-card border-dashed border-2 border-primary/30 bg-primary/5 overflow-hidden">
             <CardContent className="p-12 flex flex-col items-center justify-center text-center">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept="image/*,application/pdf"
+              />
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                 {isAnalyzing ? <Loader2 className="w-8 h-8 text-primary animate-spin" /> : <Upload className="w-8 h-8 text-primary" />}
               </div>
@@ -93,7 +134,11 @@ export default function ConsumptionAuditor() {
                 Supports PDF, JPG, and PNG. Electricity bills, grocery receipts, or fuel logs.
               </p>
               {!isAnalyzing && (
-                <Button onClick={handleFileUpload} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  size="lg" 
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
                   Choose Files
                 </Button>
               )}
