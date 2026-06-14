@@ -1,39 +1,128 @@
+
 "use client";
 
-import { useState } from "react";
-import { Binary, TrendingDown, TrendingUp, Info, RefreshCw, Zap, Car, Utensils, Home } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { Binary, TrendingDown, RefreshCw, Zap, Car, Utensils, Home, Loader2, CheckCircle2, Info, Sparkles } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { simulateCarbonImpact, type SimulateCarbonImpactOutput } from "@/ai/flows/simulate-carbon-impact";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function CarbonTwin() {
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationResult, setSimulationResult] = useState<SimulateCarbonImpactOutput | null>(null);
+  const { toast } = useToast();
+
+  // Input states
   const [commute, setCommute] = useState([50]); // miles
   const [meatDays, setMeatDays] = useState([4]);
-  const [energyEff, setEnergyEff] = useState([0]); // percentage improvement
+  const [energyEff, setEnergyEff] = useState([0]); // percentage
   const [isEV, setIsEV] = useState(false);
   const [isSolar, setIsSolar] = useState(false);
 
-  // Derived metrics (simulated)
-  const currentTotal = 1.2; // tons
-  const baseRedux = (50 - commute[0]) * 0.005 + (4 - meatDays[0]) * 0.02 + energyEff[0] * 0.01;
-  const evBonus = isEV ? 0.2 : 0;
-  const solarBonus = isSolar ? 0.35 : 0;
-  const predictedTotal = Math.max(0.1, currentTotal - baseRedux - evBonus - solarBonus);
-  const percentageRedux = ((currentTotal - predictedTotal) / currentTotal) * 100;
+  const runSimulation = useCallback(async () => {
+    setIsSimulating(true);
+    try {
+      const lifestyleChanges = [];
+
+      if (commute[0] < 50) {
+        lifestyleChanges.push({
+          type: 'transportation' as const,
+          description: "Reduced weekly driving",
+          impactDetails: `Reduced commute from 50 to ${commute[0]} miles per week.`
+        });
+      }
+
+      if (isEV) {
+        lifestyleChanges.push({
+          type: 'transportation' as const,
+          description: "Switch to Electric Vehicle",
+          impactDetails: "Swapping internal combustion engine for zero-emission EV."
+        });
+      }
+
+      if (meatDays[0] < 4) {
+        lifestyleChanges.push({
+          type: 'diet' as const,
+          description: "Reduced meat consumption",
+          impactDetails: `Lowered meat intake to ${meatDays[0]} days per week.`
+        });
+      }
+
+      if (energyEff[0] > 0) {
+        lifestyleChanges.push({
+          type: 'home_energy' as const,
+          description: "Home efficiency improvements",
+          impactDetails: `Implemented ${energyEff[0]}% efficiency gains via retrofitting.`
+        });
+      }
+
+      if (isSolar) {
+        lifestyleChanges.push({
+          type: 'home_energy' as const,
+          description: "Installed Solar Panels",
+          impactDetails: "Offsetting grid electricity with clean solar energy."
+        });
+      }
+
+      const result = await simulateCarbonImpact({
+        currentCarbonFootprint: {
+          transportation: 450,
+          diet: 150,
+          homeEnergy: 300,
+          consumption: 300,
+          total: 1200
+        },
+        lifestyleChanges
+      });
+
+      setSimulationResult(result);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Simulation Failed",
+        description: error.message || "Gemini could not process the digital twin model.",
+      });
+    } finally {
+      setIsSimulating(false);
+    }
+  }, [commute, meatDays, energyEff, isEV, isSolar, toast]);
+
+  // Initial simulation
+  useEffect(() => {
+    runSimulation();
+  }, []);
+
+  const resetModel = () => {
+    setCommute([50]);
+    setMeatDays([4]);
+    setEnergyEff([0]);
+    setIsEV(false);
+    setIsSolar(false);
+    runSimulation();
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-4xl font-headline font-bold">Predictive Carbon Twin</h1>
-          <p className="text-muted-foreground">Adjust your digital lifestyle parameters to simulate future environmental impact.</p>
+          <p className="text-muted-foreground">Adjust your digital lifestyle parameters to simulate future environmental impact via Gemini AI.</p>
         </div>
-        <Button variant="outline" size="sm" className="border-border">
-          <RefreshCw className="w-4 h-4 mr-2" /> Reset Model
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="border-border" onClick={resetModel} disabled={isSimulating}>
+            <RefreshCw className={cn("w-4 h-4 mr-2", isSimulating && "animate-spin")} /> Reset Model
+          </Button>
+          <Button size="sm" className="bg-primary text-primary-foreground" onClick={runSimulation} disabled={isSimulating}>
+            {isSimulating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+            Run Simulation
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -123,31 +212,45 @@ export default function CarbonTwin() {
         </div>
 
         <div className="lg:col-span-2 space-y-6">
-          <Card className="glass-card border-primary/30 h-full flex flex-col overflow-hidden">
+          <Card className="glass-card border-primary/30 h-full flex flex-col overflow-hidden relative">
+            {isSimulating && (
+              <div className="absolute inset-0 bg-background/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-4">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                <div className="text-sm font-headline font-bold uppercase tracking-widest text-primary animate-pulse">Running Gemini Simulation...</div>
+              </div>
+            )}
+
             <div className="bg-primary/5 px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-6 border-b border-primary/10">
               <div className="flex items-center gap-6">
                 <div className="relative">
                    <div className="w-32 h-32 rounded-full border-[10px] border-primary/10 flex items-center justify-center overflow-hidden">
                      <div className="absolute inset-0 bg-primary/20 animate-pulse"></div>
-                     <span className="relative text-4xl font-headline font-bold text-primary">{Math.round(84 + percentageRedux / 5)}</span>
+                     <span className="relative text-4xl font-headline font-bold text-primary">
+                       {simulationResult ? Math.round(84 + simulationResult.ecoScoreChangePercentage) : "--"}
+                     </span>
                    </div>
                    <div className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-full border-2 border-background">
                      ECO SCORE
                    </div>
                 </div>
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Simulated Impact</div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Predicted Annual Footprint</div>
                   <div className="text-4xl font-headline font-bold flex items-baseline gap-2">
-                    {predictedTotal.toFixed(2)}<span className="text-lg font-normal text-muted-foreground">t CO2e / yr</span>
+                    {simulationResult ? (simulationResult.predictedCarbonFootprint.total / 1000).toFixed(2) : "0.00"}
+                    <span className="text-lg font-normal text-muted-foreground">t CO2e / yr</span>
                   </div>
                   <div className="flex items-center gap-2 text-primary text-sm font-bold mt-1">
                     <TrendingDown className="w-4 h-4" />
-                    -{percentageRedux.toFixed(1)}% Reduction Forecast
+                    {simulationResult ? (
+                      `-${((simulationResult.totalCarbonReductionKgCO2e / 1200) * 100).toFixed(1)}% Reduction Forecast`
+                    ) : (
+                      "Calculating..."
+                    )}
                   </div>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <Badge className="bg-accent text-white border-none px-3 py-1 font-bold">94% PROBABILITY</Badge>
+                <Badge className="bg-accent text-white border-none px-3 py-1 font-bold uppercase tracking-tighter">Gemini Predicted</Badge>
                 <div className="text-[10px] text-muted-foreground text-right italic max-w-[150px]">
                   Based on local grid data and historical lifestyle audit
                 </div>
@@ -161,57 +264,59 @@ export default function CarbonTwin() {
                </div>
                
                <div className="space-y-6">
-                  <div className="p-4 rounded-xl bg-muted/20 border border-border">
-                    <div className="text-xs font-bold text-muted-foreground uppercase mb-2">Primary Contributor</div>
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                         {isEV ? <Car className="w-5 h-5 text-primary" /> : isSolar ? <Zap className="w-5 h-5 text-primary" /> : <TrendingDown className="w-5 h-5 text-primary" />}
+                  {simulationResult ? (
+                    <>
+                      <div className="p-4 rounded-xl bg-muted/20 border border-border">
+                        <div className="text-xs font-bold text-muted-foreground uppercase mb-2">AI Synthesis</div>
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                             <Sparkles className="w-5 h-5 text-primary" />
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed italic">
+                            {simulationResult.aiReasoning.explanation}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {percentageRedux > 10 
-                          ? `Implementing these changes would be equivalent to planting ${Math.round(percentageRedux * 1.5)} trees per year. Your transport sector remains the most sensitive variable in this model.`
-                          : "Small adjustments detected. Your baseline emissions are dominated by essential home energy usage. Consider deeper retrofitting for significant score gains."}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div className="text-xs font-bold uppercase text-muted-foreground">Long-term Trajectory</div>
-                      <div className="h-32 w-full bg-secondary/30 rounded-lg border border-border flex items-center justify-center overflow-hidden">
-                        <div className="w-full px-4 h-full flex items-end gap-1">
-                          {[40, 35, 30, 25, 20, 15, 12, 10, 8, 5].map((h, i) => (
-                             <div key={i} className="flex-1 bg-primary/30 rounded-t-sm transition-all duration-1000" style={{height: `${h}%`}}></div>
-                          ))}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <div className="text-xs font-bold uppercase text-muted-foreground">Impact Breakdown (kg)</div>
+                          <div className="space-y-2">
+                            {Object.entries(simulationResult.aiReasoning.estimatedCarbonSavingsBreakdown).map(([category, savings]) => (
+                              <div key={category} className="flex justify-between items-center text-xs">
+                                <span className="capitalize text-muted-foreground">{category.replace('_', ' ')}</span>
+                                <span className="font-bold text-primary">-{savings}kg</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="text-xs font-bold uppercase text-muted-foreground">Strategic Milestones</div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                              <span>{simulationResult.aiReasoning.estimatedEnvironmentalImpact}</span>
+                            </div>
+                            <div className="flex items-start gap-2 text-xs">
+                              <Info className="w-3.5 h-3.5 text-accent mt-0.5" />
+                              <div className="flex-1">
+                                <span className="font-bold block mb-0.5">Recommended Next Step:</span>
+                                <span className="text-muted-foreground">{simulationResult.aiReasoning.suggestedNextAction}</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex justify-between text-[9px] text-muted-foreground font-bold px-1">
-                        <span>2025</span>
-                        <span>2035</span>
-                      </div>
+                    </>
+                  ) : (
+                    <div className="h-40 flex items-center justify-center text-muted-foreground italic text-sm">
+                      Select lifestyle changes to generate AI insights.
                     </div>
-                    <div className="space-y-4">
-                      <div className="text-xs font-bold uppercase text-muted-foreground">Key Milestones</div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs">
-                          <CheckCircle className="w-3 h-3 text-primary" />
-                          <span>Carbon Neutral by 2038</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <CheckCircle className="w-3 h-3 text-primary" />
-                          <span>Top 5% of Local Savers</span>
-                        </div>
-                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Info className="w-3 h-3" />
-                          <span>Qualifies for Green Grant</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                </div>
 
                <div className="mt-8 flex justify-end">
-                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90 px-8">
+                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90 px-8" onClick={() => toast({ title: "Target Saved", description: "Your future profile has been updated."})}>
                    Set as Target Profile
                  </Button>
                </div>
@@ -221,10 +326,4 @@ export default function CarbonTwin() {
       </div>
     </div>
   );
-}
-
-function CheckCircle(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-  )
 }
