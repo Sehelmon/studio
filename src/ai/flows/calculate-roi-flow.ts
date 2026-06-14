@@ -46,7 +46,7 @@ Analyze the following project parameters:
 - Project: {{{projectType}}}
 - Location: {{{location}}}
 - Property Size: {{propertySizeSqFt}} sq ft
-- Current Monthly Spend: ${{currentMonthlySpend}}
+- Current Monthly Spend: $ {{{currentMonthlySpend}}}
 
 Based on industry averages, local utility rates (estimate based on location), and typical carbon intensities, calculate:
 1. The estimated upfront cost (be realistic for 2024-2025).
