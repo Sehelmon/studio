@@ -1,3 +1,16 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-bg",
+      "description": "Eco-friendly modern architecture with greenery",
+      "imageUrl": "https://picsum.photos/seed/ecologic-hero/1200/800",
+      "imageHint": "sustainable architecture"
+    },
+    {
+      "id": "avatar-user",
+      "description": "Professional profile picture",
+      "imageUrl": "https://picsum.photos/seed/user-1/200/200",
+      "imageHint": "person portrait"
+    }
+  ]
 }
