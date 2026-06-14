@@ -112,10 +112,14 @@ export default function CarbonCopilot() {
         trends: response.identifiedTrends
       }]);
     } catch (error: any) {
-      console.error("Copilot AI Error:", error);
-      const isQuotaError = error.message?.toLowerCase().includes('quota') || error.message?.toLowerCase().includes('limit');
+      const errorMsg = error.message || "";
+      const isQuota = 
+        errorMsg.toLowerCase().includes('quota') || 
+        errorMsg.toLowerCase().includes('limit') || 
+        errorMsg.includes('RESOURCE_EXHAUSTED') || 
+        errorMsg.includes('429');
       
-      const fallbackMsg = isQuotaError 
+      const fallbackMsg = isQuota 
         ? "AI analysis temporarily unavailable due to high demand. Please try again later. Based on your recent logs, you're tracking well with energy efficiency!"
         : "I'm having a bit of trouble connecting to my knowledge base right now. Let's try that again in a moment.";
 
@@ -125,13 +129,13 @@ export default function CarbonCopilot() {
         isError: true
       }]);
 
-      toast({
-        variant: "destructive",
-        title: isQuotaError ? "AI Quota Reached" : "Copilot Error",
-        description: isQuotaError 
-          ? "AI analysis temporarily unavailable. Please try again later."
-          : "Gemini is currently unavailable. Please try again in a moment.",
-      });
+      if (!isQuota) {
+        toast({
+          variant: "destructive",
+          title: "Copilot Error",
+          description: "Gemini is currently unavailable. Please try again in a moment.",
+        });
+      }
     } finally {
       setIsThinking(false);
     }

@@ -36,7 +36,7 @@ export default function CarbonTwin() {
         lifestyleChanges.push({
           type: 'transportation' as const,
           description: "Reduced weekly driving",
-          impactDetails: `Reduced commute from 50 to ${commute[0]} miles per week.`
+          impactDetails: `Reduced weekly driving distance to ${commute[0]} miles.`
         });
       }
 
@@ -44,7 +44,7 @@ export default function CarbonTwin() {
         lifestyleChanges.push({
           type: 'transportation' as const,
           description: "Switch to Electric Vehicle",
-          impactDetails: "Swapping internal combustion engine for zero-emission EV."
+          impactDetails: "Eliminating direct tailpipe emissions."
         });
       }
 
@@ -52,15 +52,15 @@ export default function CarbonTwin() {
         lifestyleChanges.push({
           type: 'diet' as const,
           description: "Reduced meat consumption",
-          impactDetails: `Lowered meat intake to ${meatDays[0]} days per week.`
+          impactDetails: `Eating meat only ${meatDays[0]} days per week.`
         });
       }
 
       if (energyEff[0] > 0) {
         lifestyleChanges.push({
           type: 'home_energy' as const,
-          description: "Home efficiency improvements",
-          impactDetails: `Implemented ${energyEff[0]}% efficiency gains via retrofitting.`
+          description: "Efficiency improvements",
+          impactDetails: `Improving home energy efficiency by ${energyEff[0]}%.`
         });
       }
 
@@ -68,7 +68,7 @@ export default function CarbonTwin() {
         lifestyleChanges.push({
           type: 'home_energy' as const,
           description: "Installed Solar Panels",
-          impactDetails: "Offsetting grid electricity with clean solar energy."
+          impactDetails: "Offsetting grid usage with onsite renewables."
         });
       }
 
@@ -85,58 +85,48 @@ export default function CarbonTwin() {
 
       setSimulationResult(result);
     } catch (error: any) {
-      console.error("Simulation Flow Error:", error);
-      const isQuota = error.message?.toLowerCase().includes('quota') || error.message?.toLowerCase().includes('limit');
+      const errorMsg = error.message || "";
+      const isQuota = 
+        errorMsg.toLowerCase().includes('quota') || 
+        errorMsg.toLowerCase().includes('limit') || 
+        errorMsg.includes('RESOURCE_EXHAUSTED') || 
+        errorMsg.includes('429');
       
       if (isQuota) {
         setIsQuotaError(true);
-        // Fallback estimate: Perform basic math if AI fails
-        const savings: Record<string, number> = {};
-        let totalSavings = 0;
-        
-        if (commute[0] < 50) {
-          savings.transportation = (50 - commute[0]) * 0.4; // 0.4kg per mile
-          totalSavings += savings.transportation;
-        }
-        if (isEV) {
-          savings.transportation = (savings.transportation || 0) + 120;
-          totalSavings += 120;
-        }
-        
+        // Fallback estimate
+        const totalSavings = (50 - commute[0]) * 0.4 + (isEV ? 120 : 0) + (isSolar ? 150 : 0);
         const fallbackResult: SimulateCarbonImpactOutput = {
           predictedCarbonFootprint: {
-            transportation: 450 - (savings.transportation || 0),
+            transportation: Math.max(0, 450 - ((50 - commute[0]) * 0.4 + (isEV ? 120 : 0))),
             diet: 150,
-            homeEnergy: 300,
+            homeEnergy: Math.max(0, 300 - (isSolar ? 150 : 0)),
             consumption: 300,
-            total: 1200 - totalSavings
+            total: Math.max(0, 1200 - totalSavings)
           },
           totalCarbonReductionKgCO2e: totalSavings,
           ecoScoreChangePercentage: (totalSavings / 1200) * 10,
           aiReasoning: {
-            explanation: "Predictive analysis is currently in high-availability fallback mode. Estimates are calculated based on standard emission factors.",
-            contributingBehaviors: lifestyleChanges.map(l => l.description),
-            estimatedEnvironmentalImpact: `Estimated offset of ${totalSavings.toFixed(1)}kg CO2e annually.`,
-            estimatedCarbonSavingsBreakdown: savings,
+            explanation: "Predictive analysis is currently in high-availability mode. Estimates are calculated based on standard emission factors.",
+            contributingBehaviors: ["Transportation delta", "Renewable energy adoption"],
+            estimatedEnvironmentalImpact: `Forecasted offset of ${totalSavings.toFixed(1)}kg CO2e.`,
+            estimatedCarbonSavingsBreakdown: { transport: (50 - commute[0]) * 0.4 + (isEV ? 120 : 0), energy: (isSolar ? 150 : 0) },
             suggestedNextAction: "Check back later for deep Gemini reasoning."
           }
         };
         setSimulationResult(fallbackResult);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Simulation Failed",
+          description: "Gemini could not process the digital twin model. Please try again.",
+        });
       }
-
-      toast({
-        variant: "destructive",
-        title: isQuota ? "AI Analysis Temporarily Unavailable" : "Simulation Failed",
-        description: isQuota 
-          ? "We're currently experiencing high demand. Showing basic mathematical estimates."
-          : "Gemini could not process the digital twin model. Please try again.",
-      });
     } finally {
       setIsSimulating(false);
     }
   }, [commute, meatDays, energyEff, isEV, isSolar, toast]);
 
-  // Initial simulation
   useEffect(() => {
     runSimulation();
   }, []);
@@ -306,7 +296,7 @@ export default function CarbonTwin() {
                {isQuotaError && (
                  <Alert className="mb-6 bg-amber-500/10 border-amber-500/30 text-amber-500">
                    <AlertTriangle className="h-4 w-4" />
-                   <AlertTitle className="text-xs font-bold uppercase tracking-tight">AI Service Capacity Reached</AlertTitle>
+                   <AlertTitle className="text-xs font-bold uppercase tracking-tight">AI Service Busy</AlertTitle>
                    <AlertDescription className="text-[10px]">
                      Deep analysis is temporarily unavailable. Showing mathematical estimates based on standard emission factors.
                    </AlertDescription>

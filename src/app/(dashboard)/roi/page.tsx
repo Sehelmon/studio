@@ -70,8 +70,12 @@ export default function ROIConsultant() {
         description: "Gemini has generated your custom ROI report.",
       });
     } catch (error: any) {
-      console.error("ROI Simulation Error:", error);
-      const isQuota = error.message?.toLowerCase().includes('quota') || error.message?.toLowerCase().includes('limit');
+      const errorMsg = error.message || "";
+      const isQuota = 
+        errorMsg.toLowerCase().includes('quota') || 
+        errorMsg.toLowerCase().includes('limit') || 
+        errorMsg.includes('RESOURCE_EXHAUSTED') || 
+        errorMsg.includes('429');
       
       if (isQuota) {
         setIsQuotaError(true);
@@ -83,22 +87,20 @@ export default function ROIConsultant() {
           carbonOffsetTonsPerYear: 5.2,
           availableIncentives: ["Federal Tax Credit (30%)", "Local Utility Rebate"],
           aiReasoning: {
-            explanation: "This is a conservative estimate based on regional historical data as the real-time AI consultant is currently at capacity.",
-            factorsConsidered: ["Historical averages", "Generic regional rates"],
-            suggestedNextAction: "Verify local contractor pricing"
+            explanation: "AI analysis is temporarily unavailable. Showing regional historical estimates.",
+            factorsConsidered: ["Historical averages", "Regional utility benchmarks"],
+            suggestedNextAction: "Consult with a local certified installer"
           }
         };
         setResult(fallbackResult);
         setDialogOpen(false);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Simulation Failed",
+          description: "Could not generate ROI report. Please try again.",
+        });
       }
-
-      toast({
-        variant: "destructive",
-        title: isQuota ? "AI Analysis Temporarily Unavailable" : "Simulation Failed",
-        description: isQuota 
-          ? "We're currently experiencing high demand. Showing historical fallback estimates."
-          : "Could not generate ROI report. Please try again.",
-      });
     } finally {
       setIsSimulating(false);
     }
@@ -263,9 +265,9 @@ export default function ROIConsultant() {
               {isQuotaError && (
                 <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-500">
                   <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle className="text-xs font-bold uppercase">Historical Fallback Mode</AlertTitle>
+                  <AlertTitle className="text-xs font-bold uppercase">AI Service Busy</AlertTitle>
                   <AlertDescription className="text-[10px]">
-                    AI analysis is temporarily unavailable. Displaying estimates based on regional historical averages.
+                    Deep AI analysis is temporarily unavailable. Showing regional fallback estimates.
                   </AlertDescription>
                 </Alert>
               )}

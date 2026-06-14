@@ -64,8 +64,12 @@ export default function ConsumptionAuditor() {
         });
       }
     } catch (error: any) {
-      console.error("Auditor Flow Error:", error);
-      const isQuotaError = error.message?.toLowerCase().includes('quota') || error.message?.toLowerCase().includes('limit');
+      const errorMsg = error.message || "";
+      const isQuotaError = 
+        errorMsg.toLowerCase().includes('quota') || 
+        errorMsg.toLowerCase().includes('limit') || 
+        errorMsg.includes('RESOURCE_EXHAUSTED') || 
+        errorMsg.includes('429');
       
       toast({
         variant: "destructive",
