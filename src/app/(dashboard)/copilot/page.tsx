@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useMemo, useRef, useEffect, Suspense } from "react";
+import { useState, useMemo, useRef, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Send, 
@@ -63,7 +62,7 @@ function CopilotContent() {
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
 
-  // Fetch real user context
+  // Fetch real user context for AI grounding
   const profileRef = useMemo(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
   const { data: profile } = useDoc(profileRef);
 
@@ -74,20 +73,7 @@ function CopilotContent() {
 
   const userAvatar = PlaceHolderImages.find(img => img.id === 'avatar-user')?.imageUrl;
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, isThinking]);
-
-  // Handle initial query from search bar
-  useEffect(() => {
-    if (initialQuery && user && messages.length === 1 && !isThinking) {
-      handleSend(initialQuery);
-    }
-  }, [initialQuery, user]);
-
-  const handleSend = async (customMsg?: string) => {
+  const handleSend = useCallback(async (customMsg?: string) => {
     const msgText = customMsg || input.trim();
     if (!msgText || isThinking) return;
     
@@ -99,7 +85,7 @@ function CopilotContent() {
 
     try {
       const profileCtx = profile 
-        ? `User: ${profile.displayName}, EcoScore: ${profile.ecoScore}, Joined: ${profile.joinedAt}` 
+        ? `User: ${profile.displayName}, EcoScore: ${profile.ecoScore}, Joined: ${profile.joinedAt}, Location: ${profile.location || 'Unknown'}` 
         : "Anonymous user in demo mode.";
       
       const logsCtx = recentLogs && recentLogs.length > 0
@@ -148,7 +134,22 @@ function CopilotContent() {
     } finally {
       setIsThinking(false);
     }
-  };
+  }, [input, isThinking, profile, recentLogs, toast]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isThinking]);
+
+  // AUTOMATIC SEND: Handle initial query from search bar
+  const queryProcessed = useRef(false);
+  useEffect(() => {
+    if (initialQuery && user && !queryProcessed.current) {
+      queryProcessed.current = true;
+      handleSend(initialQuery);
+    }
+  }, [initialQuery, user, handleSend]);
 
   const handleRetry = () => {
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');

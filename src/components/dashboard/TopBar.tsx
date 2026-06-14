@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -56,6 +55,7 @@ export function TopBar() {
 
   const handleSearch = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
+      // Redirect to copilot with the query parameter
       router.push(`/copilot?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
     }
