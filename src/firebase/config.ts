@@ -1,11 +1,9 @@
-
 'use client';
 
 /**
  * Firebase configuration object.
  * Values are retrieved from environment variables.
- * Note: For this to work in a real environment, you must replace the placeholder 
- * values in your .env file with the actual values from your Firebase Project Settings.
+ * For production, ensure these are set in your deployment environment (e.g., Firebase App Hosting).
  */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
