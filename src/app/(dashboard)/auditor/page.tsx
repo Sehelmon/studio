@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,40 +7,69 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { autoAnalyzeConsumption, type AutoAnalyzeConsumptionOutput } from "@/ai/flows/auto-analyze-consumption-flow";
+import { useToast } from "@/hooks/use-toast";
+import { doc, setDoc } from "firebase/firestore";
+import { useFirestore, useUser } from "@/firebase";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function ConsumptionAuditor() {
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [analyzedResult, setAnalyzedResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzedResult, setAnalyzedResult] = useState<AutoAnalyzeConsumptionOutput | null>(null);
+  const { toast } = useToast();
+  const { user } = useUser();
+  const db = useFirestore();
 
-  const simulateUpload = () => {
-    setIsUploading(true);
-    setAnalyzedResult(null);
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 5;
-      setUploadProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsUploading(false);
-          setAnalyzedResult({
-            type: "Electricity Bill",
-            provider: "Clean Grid Energy",
-            period: "Sept 2023",
-            consumption: "420 kWh",
-            emissions: "118.4 kg CO2e",
-            confidence: 99.2,
-            insights: [
-              "Your usage increased by 15% compared to August.",
-              "Major spike detected during 4 PM - 8 PM peak grid intensity hours.",
-              "Suggested action: Shift laundry and dishwasher to off-peak (after 10 PM)."
-            ],
-            reasoning: "AI analysis of your smart meter data confirms cooling systems were the primary contributor due to unusually high local temperatures (85°F avg)."
-          });
-        }, 1500);
-      }
-    }, 50);
+  const handleFileUpload = async () => {
+    // In a real app, this would handle actual file selection and base64 conversion
+    // For this MVP, we use a placeholder image seed to represent the bill
+    setIsAnalyzing(true);
+    try {
+      const result = await autoAnalyzeConsumption({
+        documentDataUri: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/", // Mock data URI
+        documentType: 'electricity_bill',
+        additionalContext: "User is checking their monthly spending."
+      });
+      setAnalyzedResult(result);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Analysis Failed",
+        description: error.message || "Could not analyze the document.",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleConfirmImpact = () => {
+    if (!user || !analyzedResult) return;
+
+    const logRef = doc(db, "users", user.uid, "impact_logs", Date.now().toString());
+    const data = {
+      type: analyzedResult.documentTypeIdentified,
+      emissions: analyzedResult.estimatedCarbonEmissionsKgCO2e,
+      category: analyzedResult.spendingCategory,
+      timestamp: new Date().toISOString(),
+      details: analyzedResult.extractedInformation
+    };
+
+    setDoc(logRef, data)
+      .then(() => {
+        toast({
+          title: "Impact Logged",
+          description: "Your carbon footprint has been updated successfully.",
+        });
+      })
+      .catch(async () => {
+        const permissionError = new FirestorePermissionError({
+          path: logRef.path,
+          operation: 'create',
+          requestResourceData: data,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   return (
@@ -54,29 +84,18 @@ export default function ConsumptionAuditor() {
           <Card className="glass-card border-dashed border-2 border-primary/30 bg-primary/5">
             <CardContent className="p-12 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-                {isUploading ? <Loader2 className="w-8 h-8 text-primary animate-spin" /> : <Upload className="w-8 h-8 text-primary" />}
+                {isAnalyzing ? <Loader2 className="w-8 h-8 text-primary animate-spin" /> : <Upload className="w-8 h-8 text-primary" />}
               </div>
               <h3 className="text-xl font-headline font-bold mb-2">
-                {isUploading ? "Gemini is auditing..." : "Drop documents here"}
+                {isAnalyzing ? "Gemini is auditing..." : "Drop documents here"}
               </h3>
               <p className="text-muted-foreground text-sm mb-6 max-w-xs">
                 Supports PDF, JPG, and PNG. Electricity bills, grocery receipts, or fuel logs.
               </p>
-              {!isUploading && (
-                <Button onClick={simulateUpload} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+              {!isAnalyzing && (
+                <Button onClick={handleFileUpload} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
                   Choose Files
                 </Button>
-              )}
-              {isUploading && (
-                <div className="w-full space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-tighter">
-                    <span>Scanning Forensics</span>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-primary/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary transition-all duration-300" style={{width: `${uploadProgress}%`}}></div>
-                  </div>
-                </div>
               )}
             </CardContent>
           </Card>
@@ -92,19 +111,13 @@ export default function ConsumptionAuditor() {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                 <div className="text-sm leading-relaxed">
-                  <span className="font-bold">Privacy First:</span> All sensitive PII (Account numbers, address) is automatically redacted before analysis.
+                  <span className="font-bold">Privacy First:</span> All sensitive PII is automatically redacted before analysis.
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                 <div className="text-sm leading-relaxed">
-                  <span className="font-bold">Grid Intensity:</span> We use real-time regional grid data to convert kWh to accurate CO2e.
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                <div className="text-sm leading-relaxed">
-                  <span className="font-bold">Multi-Modal:</span> Upload physical receipt photos or digital PDF bills.
+                  <span className="font-bold">Grid Intensity:</span> We use real-time regional data to convert units to accurate CO2e.
                 </div>
               </div>
             </CardContent>
@@ -122,20 +135,19 @@ export default function ConsumptionAuditor() {
                     </div>
                     <div>
                       <div className="text-xs font-bold uppercase tracking-tighter text-primary">Audit Result</div>
-                      <div className="text-sm font-bold">{analyzedResult.type} Identified</div>
+                      <div className="text-sm font-bold">{analyzedResult.documentTypeIdentified}</div>
                     </div>
                   </div>
-                  <Badge className="bg-primary text-primary-foreground font-bold">{analyzedResult.confidence}% Confidence</Badge>
                 </div>
                 <CardContent className="p-6">
                   <div className="grid grid-cols-2 gap-8 mb-8">
                     <div>
-                      <div className="text-xs text-muted-foreground uppercase mb-1">Consumption</div>
-                      <div className="text-2xl font-headline font-bold">{analyzedResult.consumption}</div>
+                      <div className="text-xs text-muted-foreground uppercase mb-1">Spending Category</div>
+                      <div className="text-2xl font-headline font-bold">{analyzedResult.spendingCategory}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground uppercase mb-1">Carbon Impact</div>
-                      <div className="text-2xl font-headline font-bold text-destructive">{analyzedResult.emissions}</div>
+                      <div className="text-2xl font-headline font-bold text-destructive">{analyzedResult.estimatedCarbonEmissionsKgCO2e}kg CO2e</div>
                     </div>
                   </div>
 
@@ -146,14 +158,9 @@ export default function ConsumptionAuditor() {
                       <Sparkles className="w-4 h-4 text-primary" />
                       AI Insights
                     </div>
-                    <ul className="space-y-3">
-                      {analyzedResult.insights.map((insight: string, i: number) => (
-                        <li key={i} className="text-sm text-muted-foreground flex gap-3">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0"></span>
-                          {insight}
-                        </li>
-                      ))}
-                    </ul>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {analyzedResult.personalizedInsights}
+                    </p>
                   </div>
 
                   <div className="mt-8 p-4 bg-muted/50 rounded-xl border border-border">
@@ -166,10 +173,10 @@ export default function ConsumptionAuditor() {
               </Card>
 
               <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="border-border hover:bg-white/5">
-                  <Eye className="w-4 h-4 mr-2" /> View OCR Data
+                <Button variant="outline" className="border-border" onClick={() => setAnalyzedResult(null)}>
+                  Discard
                 </Button>
-                <Button className="bg-primary text-primary-foreground">
+                <Button className="bg-primary text-primary-foreground" onClick={handleConfirmImpact}>
                   Confirm & Log Impact <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </div>
