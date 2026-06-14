@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -5,9 +6,11 @@ import { ArrowRight, Globe, Zap, Binary, Rocket, Target, Building2, CheckCircle2
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/firebase";
 
 export default function LandingPage() {
   const { toast } = useToast();
+  const { user } = useUser();
 
   const handleContactSales = () => {
     toast({
@@ -40,15 +43,26 @@ export default function LandingPage() {
             <Link href="#enterprise" className="hover:text-primary transition-colors">Enterprise</Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" className="hidden sm:inline-flex">Login</Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(44,218,177,0.3)]">
-                Get Started
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
+            {user ? (
+              <Link href="/dashboard">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  Dashboard
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" className="hidden sm:inline-flex">Login</Button>
+                </Link>
+                <Link href="/login">
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(44,218,177,0.3)]">
+                    Get Started
+                    <ArrowRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -67,9 +81,9 @@ export default function LandingPage() {
             Stop guessing your impact. EcoLogic AI proactively audits your consumption, predicts your environmental future, and coaches you toward net-zero with forensic precision.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/dashboard">
+            <Link href={user ? "/dashboard" : "/login"}>
               <Button size="lg" className="h-14 px-8 text-lg bg-primary text-primary-foreground hover:scale-105 transition-transform duration-300">
-                Launch Dashboard
+                {user ? "View Dashboard" : "Launch Dashboard"}
               </Button>
             </Link>
             <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-border hover:bg-white/5" onClick={() => handlePlaceholderClick('Demo')}>
@@ -223,7 +237,7 @@ export default function LandingPage() {
             <p className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto mb-10">
               Join thousands of individuals and enterprises using EcoLogic AI to master their environmental footprint.
             </p>
-            <Link href="/dashboard">
+            <Link href={user ? "/dashboard" : "/login"}>
               <Button size="lg" className="h-16 px-12 text-xl bg-background text-foreground hover:bg-background/90 rounded-2xl">
                 Get Started for Free
               </Button>

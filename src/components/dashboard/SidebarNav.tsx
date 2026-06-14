@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
@@ -13,8 +14,12 @@ import {
   Settings, 
   ShieldCheck,
   TrendingDown,
-  Globe
+  Globe,
+  LogOut
 } from "lucide-react";
+import { useAuth, useUser } from "@/firebase";
+import { signOut } from "firebase/auth";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
@@ -27,10 +32,18 @@ const navItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const auth = useAuth();
+  const router = useRouter();
+  const { user } = useUser();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/");
+  };
 
   return (
     <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border w-64 fixed left-0 top-0 z-40 overflow-y-auto">
-      <Link href="/dashboard" className="p-6 flex items-center gap-3 hover:opacity-80 transition-opacity outline-none">
+      <Link href="/" className="p-6 flex items-center gap-3 hover:opacity-80 transition-opacity outline-none">
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground">
           <Globe className="w-6 h-6" />
         </div>
@@ -73,10 +86,17 @@ export function SidebarNav() {
         </div>
       </div>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border space-y-2">
         <button className="flex items-center gap-3 px-3 py-2 w-full text-sm text-muted-foreground hover:text-foreground transition-colors">
           <Settings className="w-5 h-5" />
           Settings
+        </button>
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 w-full text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          Logout
         </button>
       </div>
     </div>

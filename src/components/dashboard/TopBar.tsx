@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Bell, Search, User } from "lucide-react";
@@ -5,9 +6,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { useUser } from "@/firebase";
 
 export function TopBar() {
-  const userAvatar = PlaceHolderImages.find(img => img.id === 'avatar-user')?.imageUrl;
+  const { user } = useUser();
+  const userAvatarPlaceholder = PlaceHolderImages.find(img => img.id === 'avatar-user')?.imageUrl;
 
   return (
     <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30 px-6 flex items-center justify-between">
@@ -27,12 +30,12 @@ export function TopBar() {
         <div className="h-8 w-px bg-border"></div>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <div className="text-sm font-medium">Alex Rivers</div>
+            <div className="text-sm font-medium">{user?.displayName || user?.email?.split('@')[0] || "Alex Rivers"}</div>
             <div className="text-[10px] text-primary uppercase font-bold tracking-tighter">Pro Member</div>
           </div>
           <Avatar className="h-9 w-9 border border-border">
-            <AvatarImage src={userAvatar} alt="Alex Rivers" />
-            <AvatarFallback>AR</AvatarFallback>
+            <AvatarImage src={user?.photoURL || userAvatarPlaceholder} alt={user?.displayName || "User"} />
+            <AvatarFallback>{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
           </Avatar>
         </div>
       </div>
