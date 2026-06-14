@@ -1,11 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Globe, Zap, Binary, Rocket, Target, Building2, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Globe, Zap, Binary, Rocket, Target, Building2, CheckCircle2, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LandingPage() {
+  const { toast } = useToast();
+
+  const handleContactSales = () => {
+    toast({
+      title: "Request Sent",
+      description: "Our enterprise sales team will contact you within 24 hours.",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background selection:bg-primary selection:text-primary-foreground">
       {/* Navigation */}
@@ -192,7 +202,7 @@ export default function LandingPage() {
             </Card>
           </div>
           
-          <Button size="lg" className="mt-16 bg-accent text-white hover:bg-accent/90">
+          <Button size="lg" className="mt-16 bg-accent text-white hover:bg-accent/90" onClick={handleContactSales}>
             Contact Enterprise Sales
           </Button>
         </div>
@@ -240,11 +250,4 @@ export default function LandingPage() {
       </footer>
     </div>
   );
-}
-
-// Helper icons
-function FileSearch(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="14" r="2"/><path d="m20 22-1.5-1.5"/></svg>
-  )
 }
