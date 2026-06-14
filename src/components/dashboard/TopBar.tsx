@@ -56,7 +56,6 @@ export function TopBar() {
   const handleSearch = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       const q = searchQuery.trim();
-      // Redirect to copilot with the query parameter
       router.push(`/copilot?q=${encodeURIComponent(q)}`);
       setSearchQuery("");
     }
@@ -65,13 +64,13 @@ export function TopBar() {
   return (
     <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30 px-6 flex items-center justify-between">
       <div className="max-w-md w-full relative group">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+        <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary group-focus-within:animate-pulse transition-colors" />
         <Input 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={handleSearch}
-          placeholder="Search insights, documents, or data..." 
-          className="pl-10 pr-12 bg-muted/50 border-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-primary/50"
+          placeholder="Ask Gemini anything..." 
+          className="pl-10 pr-12 bg-primary/5 border-primary/20 h-10 text-sm focus-visible:ring-1 focus-visible:ring-primary/50 placeholder:text-muted-foreground/50"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
           <kbd className="hidden sm:flex h-5 select-none items-center gap-1 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
@@ -135,7 +134,7 @@ export function TopBar() {
               <div className="text-[10px] text-primary uppercase font-bold tracking-tighter">Pro Member</div>
             )}
           </div>
-          <Avatar className="h-9 w-9 border border-border">
+          <Avatar className="h-9 w-9 border border-border cursor-pointer hover:opacity-80 transition-opacity" onClick={() => router.push('/settings')}>
             <AvatarImage src={photoURL} alt={displayName} />
             <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
           </Avatar>

@@ -145,11 +145,12 @@ function CopilotContent() {
   // AUTOMATIC SEND: Handle initial query from search bar
   const lastProcessedQuery = useRef<string | null>(null);
   useEffect(() => {
-    if (initialQuery && user && initialQuery !== lastProcessedQuery.current) {
+    // Removed user dependency to ensure it works in Demo Mode too
+    if (initialQuery && initialQuery !== lastProcessedQuery.current) {
       lastProcessedQuery.current = initialQuery;
       handleSend(initialQuery);
     }
-  }, [initialQuery, user, handleSend]);
+  }, [initialQuery, handleSend]);
 
   const handleRetry = () => {
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
@@ -280,7 +281,7 @@ function CopilotContent() {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-            <Button variant="outline" size="icon" className="h-12 w-12 border-border">
+            <Button variant="outline" size="icon" className="h-12 w-12 border-border" onClick={() => setInput("")}>
               <PlusCircle className="w-5 h-5 text-muted-foreground" />
             </Button>
           </div>
