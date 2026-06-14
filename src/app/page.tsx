@@ -86,9 +86,6 @@ export default function LandingPage() {
                 {user ? "View Dashboard" : "Launch Dashboard"}
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-border hover:bg-white/5" onClick={() => handlePlaceholderClick('Demo')}>
-              Watch Demo
-            </Button>
           </div>
         </div>
 
