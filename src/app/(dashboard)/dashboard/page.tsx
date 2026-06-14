@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   TrendingDown, 
   TrendingUp, 
@@ -133,10 +134,12 @@ export default function DashboardOverview() {
             <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
               Based on your electricity bills and local sun exposure, solar panels would pay for themselves in <span className="text-foreground font-medium underline decoration-primary decoration-2 underline-offset-4">4.2 years</span>.
             </p>
-            <Button size="sm" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              View ROI Report
-              <ChevronRight className="ml-2 w-4 h-4" />
-            </Button>
+            <Link href="/roi">
+              <Button size="sm" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                View ROI Report
+                <ChevronRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -231,7 +234,9 @@ export default function DashboardOverview() {
                 </CardContent>
               </Card>
             ))}
-            <Button variant="outline" className="w-full border-border hover:bg-primary/5">View All Challenges</Button>
+            <Link href="/challenges" className="w-full">
+              <Button variant="outline" className="w-full border-border hover:bg-primary/5">View All Challenges</Button>
+            </Link>
           </div>
         </div>
 
