@@ -30,12 +30,12 @@ export function SidebarNav() {
 
   return (
     <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border w-64 fixed left-0 top-0 z-40 overflow-y-auto">
-      <div className="p-6 flex items-center gap-3">
+      <Link href="/dashboard" className="p-6 flex items-center gap-3 hover:opacity-80 transition-opacity outline-none">
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground">
           <Globe className="w-6 h-6" />
         </div>
         <span className="font-headline font-bold text-xl tracking-tighter">EcoLogic AI</span>
-      </div>
+      </Link>
 
       <nav className="flex-1 px-4 space-y-1 py-4">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 px-2">Intelligence</div>

@@ -10,12 +10,12 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="border-b border-border/50 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
               <Globe className="w-5 h-5" />
             </div>
             <span className="font-headline font-bold text-xl tracking-tighter">EcoLogic AI</span>
-          </div>
+          </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
             <Link href="#features" className="hover:text-primary transition-colors">Features</Link>
             <Link href="#about" className="hover:text-primary transition-colors">Mission</Link>
@@ -100,7 +100,6 @@ export default function LandingPage() {
             <div className="p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all group">
               <Binary className="w-10 h-10 text-primary mb-6 group-hover:scale-110 transition-transform" />
               <h3 className="text-2xl font-headline font-bold mb-4">Predictive Twin</h3>
-              <h3 className="text-2xl font-headline font-bold mb-4">Carbon Twin</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Simulate lifestyle changes like switching to an EV or changing diets. Forecast your environmental score decades into the future.
               </p>
@@ -139,12 +138,12 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-20 border-t border-border">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-primary-foreground">
               <Globe className="w-4 h-4" />
             </div>
             <span className="font-headline font-bold text-lg tracking-tighter">EcoLogic AI</span>
-          </div>
+          </Link>
           <div className="flex items-center gap-8 text-sm text-muted-foreground">
             <Link href="#" className="hover:text-primary">Privacy</Link>
             <Link href="#" className="hover:text-primary">Terms</Link>
