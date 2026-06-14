@@ -143,10 +143,10 @@ function CopilotContent() {
   }, [messages, isThinking]);
 
   // AUTOMATIC SEND: Handle initial query from search bar
-  const queryProcessed = useRef(false);
+  const lastProcessedQuery = useRef<string | null>(null);
   useEffect(() => {
-    if (initialQuery && user && !queryProcessed.current) {
-      queryProcessed.current = true;
+    if (initialQuery && user && initialQuery !== lastProcessedQuery.current) {
+      lastProcessedQuery.current = initialQuery;
       handleSend(initialQuery);
     }
   }, [initialQuery, user, handleSend]);
