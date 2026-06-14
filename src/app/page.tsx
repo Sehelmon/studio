@@ -16,6 +16,13 @@ export default function LandingPage() {
     });
   };
 
+  const handlePlaceholderClick = (feature: string) => {
+    toast({
+      title: `${feature} Information`,
+      description: `The ${feature.toLowerCase()} section is currently being finalized for our production release.`,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background selection:bg-primary selection:text-primary-foreground">
       {/* Navigation */}
@@ -65,7 +72,7 @@ export default function LandingPage() {
                 Launch Dashboard
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-border hover:bg-white/5">
+            <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-border hover:bg-white/5" onClick={() => handlePlaceholderClick('Demo')}>
               Watch Demo
             </Button>
           </div>
@@ -232,16 +239,16 @@ export default function LandingPage() {
       <footer className="py-20 border-t border-border">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-6 gold-6 bg-primary rounded flex items-center justify-center text-primary-foreground">
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center text-primary-foreground">
               <Globe className="w-4 h-4" />
             </div>
             <span className="font-headline font-bold text-lg tracking-tighter">EcoLogic AI</span>
           </Link>
           <div className="flex items-center gap-8 text-sm text-muted-foreground">
-            <Link href="#" className="hover:text-primary">Privacy</Link>
-            <Link href="#" className="hover:text-primary">Terms</Link>
-            <Link href="#" className="hover:text-primary">API</Link>
-            <Link href="#" className="hover:text-primary">Status</Link>
+            <button onClick={() => handlePlaceholderClick('Privacy')} className="hover:text-primary transition-colors">Privacy</button>
+            <button onClick={() => handlePlaceholderClick('Terms')} className="hover:text-primary transition-colors">Terms</button>
+            <button onClick={() => handlePlaceholderClick('API')} className="hover:text-primary transition-colors">API</button>
+            <button onClick={() => handlePlaceholderClick('Status')} className="hover:text-primary transition-colors">Status</button>
           </div>
           <div className="text-xs text-muted-foreground/50">
             © 2025 EcoLogic AI. Built for the Future.
