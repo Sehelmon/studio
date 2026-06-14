@@ -51,7 +51,7 @@ export default function LoginPage() {
           displayName: user.displayName || email.split('@')[0],
           photoURL: user.photoURL || "",
           ecoScore: 50, // Starting score
-          joinedAt: serverTimestamp(),
+          joinedAt: new Date().toISOString(),
         };
 
         setDoc(userDocRef, profileData, { merge: true })
@@ -91,7 +91,7 @@ export default function LoginPage() {
         displayName: user.displayName,
         photoURL: user.photoURL,
         ecoScore: 50,
-        joinedAt: serverTimestamp(),
+        joinedAt: new Date().toISOString(),
       };
 
       setDoc(userDocRef, profileData, { merge: true })
