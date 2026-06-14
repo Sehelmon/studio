@@ -1,5 +1,42 @@
-# Firebase Studio
+# Problem
 
-This is a NextJS starter in Firebase Studio.
+Most carbon tracking applications require manual input and provide generic recommendations.
 
-To get started, take a look at src/app/page.tsx.
+Solution
+
+EcoLogic AI is an AI-powered sustainability coach that:
+
+Audits bills and receipts
+Explains emissions
+Predicts future carbon impact
+Generates personalized recommendations
+Simulates sustainability decisions
+Features
+Forensic Consumption Auditor
+Carbon Twin Simulator
+Gemini Carbon Copilot
+ROI Sustainability Consultant
+Hyper-Local Challenges
+Dynamic Eco Score
+Architecture
+
+Explain:
+
+Frontend
+Next.js + TypeScript
+
+Backend
+Firebase
+
+AI
+Gemini + Genkit
+AI Flow
+Document
+↓
+OCR
+↓
+Validation
+↓
+Carbon Calculation
+↓
+AI Explanation
